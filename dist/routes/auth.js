@@ -19,6 +19,7 @@ router.post("/signin", [
         .isEmail()
         .withMessage("Must be a valid email address"),
 ], customValidations_1.validate, auth_1.login);
+router.get("/verify-refresh-token", auth_1.verifyRefreshToken);
 router.get("/logout", auth_1.logout);
 router.post("/forgot-password", [
     (0, express_validator_1.body)("email")

@@ -8,6 +8,7 @@ import {
   verifyPasswordResetCode,
   getUserInfo,
   resetPassword,
+  verifyRefreshToken,
 } from "../controllers/auth";
 import { signupValidationRules, validate } from "../utils/customValidations";
 import { body } from "express-validator";
@@ -30,6 +31,7 @@ router.post(
   validate,
   login
 );
+router.get("/verify-refresh-token", verifyRefreshToken);
 router.get("/logout", logout);
 router.post(
   "/forgot-password",

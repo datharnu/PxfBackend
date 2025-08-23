@@ -4,7 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
-const unathenticated_1 = __importDefault(require("../errors/unathenticated"));
+const unauthenticated_1 = __importDefault(require("../errors/unauthenticated"));
 const user_1 = __importDefault(require("../models/user"));
 // Load env variables safely
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -19,7 +19,7 @@ const isUserAuthenticated = async (req, res, next) => {
     }
     try {
         if (!accessToken) {
-            throw new unathenticated_1.default("Please sign in");
+            throw new unauthenticated_1.default("Please sign in");
         }
         console.log("🔍 Token received:", accessToken.substring(0, 20) + "...");
         const payload = jsonwebtoken_1.default.verify(accessToken, JWT_SECRET);
@@ -42,7 +42,7 @@ const isUserAuthenticated = async (req, res, next) => {
         });
         if (!user) {
             console.log("❌ User not found in database with ID:", payload.id);
-            throw new unathenticated_1.default("User not found");
+            throw new unauthenticated_1.default("User not found");
         }
         // Optional: Check token version for security
         if (user.tokenVersion !== payload.tokenVersion) {
@@ -50,7 +50,7 @@ const isUserAuthenticated = async (req, res, next) => {
                 dbVersion: user.tokenVersion,
                 tokenVersion: payload.tokenVersion,
             });
-            throw new unathenticated_1.default("Token has been invalidated");
+            throw new unauthenticated_1.default("Token has been invalidated");
         }
         req.user = {
             id: user.id,
