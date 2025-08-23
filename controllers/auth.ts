@@ -7,7 +7,7 @@ import { StatusCodes } from "http-status-codes";
 import { removeTokenFromResponse } from "../utils/handleCookies";
 import NotFoundError from "../errors/notFound";
 import crypto from "node:crypto";
-import UnAunthenticatedError from "../errors/unathenticated";
+import UnAunthenticatedError from "../errors/unauthenticated";
 import {
   sendPasswordResetCode,
   sendWelcomeMessage,

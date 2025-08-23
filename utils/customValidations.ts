@@ -62,3 +62,60 @@ export const signupValidationRules = () => [
       return true;
     }),
 ];
+
+/**
+ * Returns an array of validation rules for event creation.
+ *
+ * Validates the following fields:
+ * - `title`: Must be non-empty, between 3 and 200 characters
+ * - `description`: Must be non-empty, between 10 and 2000 characters
+ * - `eventFlyer`: Optional, must be a valid URL if provided
+ * - `guestLimit`: Must be one of the predefined enum values
+ * - `photoCapLimit`: Must be one of the predefined enum values
+ * - `eventDate`: Optional, must be a valid future date if provided
+ *
+ * @returns {Array} An array of validation chain objects from express-validator.
+ */
+export const eventValidationRules = () => [
+  body("title")
+    .trim()
+    .notEmpty()
+    .withMessage("Title is required")
+    .isLength({ min: 3, max: 200 })
+    .withMessage("Title must be between 3 and 200 characters"),
+
+  body("description")
+    .trim()
+    .notEmpty()
+    .withMessage("Description is required")
+    .isLength({ min: 10, max: 2000 })
+    .withMessage("Description must be between 10 and 2000 characters"),
+
+  body("eventFlyer")
+    .optional()
+    .isURL()
+    .withMessage("Event flyer must be a valid URL"),
+
+  body("guestLimit")
+    .notEmpty()
+    .withMessage("Guest limit is required")
+    .isIn(["10", "100", "250", "500", "800", "1000+"])
+    .withMessage("Guest limit must be one of: 10, 100, 250, 500, 800, 1000+"),
+
+  body("photoCapLimit")
+    .notEmpty()
+    .withMessage("Photo capture limit is required")
+    .isIn(["5", "10", "15", "20", "25"])
+    .withMessage("Photo capture limit must be one of: 5, 10, 15, 20, 25"),
+
+  body("eventDate")
+    .optional()
+    .isISO8601()
+    .withMessage("Event date must be a valid date")
+    .custom((value) => {
+      if (value && new Date(value) < new Date()) {
+        throw new Error("Event date must be in the future");
+      }
+      return true;
+    }),
+];

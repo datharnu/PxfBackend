@@ -416,4 +416,13 @@ User.init(
   }
 );
 
+// Define associations
+(User as any).associate = (models: any) => {
+  // User can have many Events
+  User.hasMany(models.Event, {
+    foreignKey: "createdBy",
+    as: "events",
+  });
+};
+
 export default User;

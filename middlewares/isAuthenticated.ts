@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import jwt, { JwtPayload } from "jsonwebtoken";
-import UnAunthenticatedError from "../errors/unathenticated";
+import UnAunthenticatedError from "../errors/unauthenticated";
 import User from "../models/user";
 
 // Load env variables safely

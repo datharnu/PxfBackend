@@ -11,7 +11,7 @@ const google_auth_library_1 = require("google-auth-library");
 const http_status_codes_1 = require("http-status-codes");
 const notFound_1 = __importDefault(require("../errors/notFound"));
 const node_crypto_1 = __importDefault(require("node:crypto"));
-const unathenticated_1 = __importDefault(require("../errors/unathenticated"));
+const unauthenticated_1 = __importDefault(require("../errors/unauthenticated"));
 const emailSender_1 = require("../utils/emailSender");
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const client = new google_auth_library_1.OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -546,7 +546,7 @@ const getNewAccessToken = async (req, res, next) => {
     const authHeader = req.headers.authorization;
     try {
         if (!authHeader || !authHeader.startsWith("Bearer ")) {
-            throw new unathenticated_1.default("No token provided");
+            throw new unauthenticated_1.default("No token provided");
         }
         const refreshToken = authHeader.split(" ")[1];
         const decoded = jsonwebtoken_1.default.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
@@ -555,11 +555,11 @@ const getNewAccessToken = async (req, res, next) => {
             user.refreshToken !== refreshToken ||
             (user.tokenVersion !== undefined &&
                 decoded.tokenVersion !== user.tokenVersion)) {
-            throw new unathenticated_1.default("Invalid refresh token");
+            throw new unauthenticated_1.default("Invalid refresh token");
         }
         // Check if user account is still active
         if (!user.isActive) {
-            throw new unathenticated_1.default("Account is no longer active");
+            throw new unauthenticated_1.default("Account is no longer active");
         }
         const newAccessToken = await user.createJWT();
         // Optional: Rotate refresh token for enhanced security
@@ -580,7 +580,7 @@ const getNewAccessToken = async (req, res, next) => {
     catch (error) {
         const err = error;
         if (err.name === "TokenExpiredError") {
-            return next(new unathenticated_1.default("Refresh token has expired"));
+            return next(new unauthenticated_1.default("Refresh token has expired"));
         }
         next(error);
     }
@@ -590,7 +590,7 @@ const verifyRefreshToken = async (req, res, next) => {
     const authHeader = req.headers.authorization;
     try {
         if (!authHeader || !authHeader.startsWith("Bearer ")) {
-            throw new unathenticated_1.default("No token provided");
+            throw new unauthenticated_1.default("No token provided");
         }
         const refreshToken = authHeader.split(" ")[1];
         const decoded = jsonwebtoken_1.default.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
@@ -599,11 +599,11 @@ const verifyRefreshToken = async (req, res, next) => {
             user.refreshToken !== refreshToken ||
             (user.tokenVersion !== undefined &&
                 decoded.tokenVersion !== user.tokenVersion)) {
-            throw new unathenticated_1.default("Invalid refresh token");
+            throw new unauthenticated_1.default("Invalid refresh token");
         }
         // Check if user account is still active
         if (!user.isActive) {
-            throw new unathenticated_1.default("Account is no longer active");
+            throw new unauthenticated_1.default("Account is no longer active");
         }
         return res.status(http_status_codes_1.StatusCodes.OK).json({
             success: true,
@@ -618,7 +618,7 @@ const verifyRefreshToken = async (req, res, next) => {
     catch (error) {
         const err = error;
         if (err.name === "TokenExpiredError") {
-            return next(new unathenticated_1.default("Refresh token has expired"));
+            return next(new unauthenticated_1.default("Refresh token has expired"));
         }
         next(error);
     }
@@ -668,11 +668,11 @@ const getUserInfo = async (req, // Use standard Request type
 res, next) => {
     try {
         if (!req.user) {
-            throw new unathenticated_1.default("User not authenticated");
+            throw new unauthenticated_1.default("User not authenticated");
         }
         const user = await user_1.default.findByPk(req.user.id);
         if (!user) {
-            throw new unathenticated_1.default("User not found");
+            throw new unauthenticated_1.default("User not found");
         }
         res.status(http_status_codes_1.StatusCodes.OK).json({
             success: true,
