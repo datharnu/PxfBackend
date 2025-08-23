@@ -9,6 +9,7 @@ import {
   getUserInfo,
   resetPassword,
   verifyRefreshToken,
+  getNewAccessToken,
 } from "../controllers/auth";
 import { signupValidationRules, validate } from "../utils/customValidations";
 import { body } from "express-validator";
@@ -32,6 +33,7 @@ router.post(
   login
 );
 router.get("/verify-refresh-token", verifyRefreshToken);
+router.post("/refresh-token", getNewAccessToken);
 router.get("/logout", logout);
 router.post(
   "/forgot-password",
@@ -73,5 +75,14 @@ router.post(
   resetPassword
 );
 router.get("/user", isUserAuthenticated, getUserInfo);
+
+// Test endpoint to check authentication status
+router.get("/test-auth", isUserAuthenticated, (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "Authentication successful",
+    user: req.user,
+  });
+});
 
 export default router;

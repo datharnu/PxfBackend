@@ -110,12 +110,20 @@ const login = async (req, res, next) => {
             createdAt: user.createdAt,
             updatedAt: user.updatedAt,
         };
-        // Set refresh token as httpOnly cookie (optional - for web security)
-        res.cookie("refreshToken", refreshToken, {
-            httpOnly: true,
+        // Set tokens as cookies with better development support
+        res.cookie("accessToken", accessToken, {
+            httpOnly: false, // Allow JavaScript access in development
             secure: process.env.NODE_ENV === "production", // HTTPS in production
-            sameSite: "strict",
+            sameSite: "lax", // More permissive for development
+            maxAge: 15 * 60 * 1000, // 15 minutes
+            path: "/", // Ensure cookie is available for all paths
+        });
+        res.cookie("refreshToken", refreshToken, {
+            httpOnly: true, // Keep refresh token secure
+            secure: process.env.NODE_ENV === "production", // HTTPS in production
+            sameSite: "lax", // More permissive for development
             maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+            path: "/", // Ensure cookie is available for all paths
         });
         return res.status(200).json({
             success: true,
@@ -179,12 +187,20 @@ const googleLogin = async (req, res, next) => {
             createdAt: user.createdAt,
             updatedAt: user.updatedAt,
         };
-        // Set refresh token as httpOnly cookie (optional - for web security)
-        res.cookie("refreshToken", refreshToken, {
-            httpOnly: true,
+        // Set tokens as cookies with better development support
+        res.cookie("accessToken", accessToken, {
+            httpOnly: false, // Allow JavaScript access in development
             secure: process.env.NODE_ENV === "production", // HTTPS in production
-            sameSite: "strict",
+            sameSite: "lax", // More permissive for development
+            maxAge: 15 * 60 * 1000, // 15 minutes
+            path: "/", // Ensure cookie is available for all paths
+        });
+        res.cookie("refreshToken", refreshToken, {
+            httpOnly: true, // Keep refresh token secure
+            secure: process.env.NODE_ENV === "production", // HTTPS in production
+            sameSite: "lax", // More permissive for development
             maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+            path: "/", // Ensure cookie is available for all paths
         });
         return res.status(200).json({
             success: true,
@@ -562,6 +578,13 @@ const getNewAccessToken = async (req, res, next) => {
             throw new unauthenticated_1.default("Account is no longer active");
         }
         const newAccessToken = await user.createJWT();
+        // Set the new access token as a cookie
+        res.cookie("accessToken", newAccessToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+            maxAge: 15 * 60 * 1000, // 15 minutes
+        });
         // Optional: Rotate refresh token for enhanced security
         // const newRefreshToken = await user.createRefreshToken();
         // user.refreshToken = newRefreshToken;
@@ -631,20 +654,35 @@ function isValidEmail(email) {
 }
 // Additional logout controller for security
 const logout = async (req, res, next) => {
-    const authHeader = req.headers.authorization;
     try {
-        if (!authHeader || !authHeader.startsWith("Bearer ")) {
-            return res.status(http_status_codes_1.StatusCodes.OK).json({
-                success: true,
-                message: "Logged out successfully",
-            });
-        }
-        const refreshToken = authHeader.split(" ")[1];
-        const decoded = jsonwebtoken_1.default.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
-        const user = await user_1.default.findByPk(decoded.id);
-        if (user && user.refreshToken === refreshToken) {
-            user.refreshToken = null;
-            await user.save();
+        // Clear both access and refresh token cookies
+        res.cookie("accessToken", "", {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+            expires: new Date(0), // Expire immediately
+        });
+        res.cookie("refreshToken", "", {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+            expires: new Date(0), // Expire immediately
+        });
+        // If there's a refresh token in the request, invalidate it in the database
+        const authHeader = req.headers.authorization;
+        if (authHeader && authHeader.startsWith("Bearer ")) {
+            const refreshToken = authHeader.split(" ")[1];
+            try {
+                const decoded = jsonwebtoken_1.default.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
+                const user = await user_1.default.findByPk(decoded.id);
+                if (user && user.refreshToken === refreshToken) {
+                    user.refreshToken = null;
+                    await user.save();
+                }
+            }
+            catch (error) {
+                // Ignore token verification errors during logout
+            }
         }
         res.status(http_status_codes_1.StatusCodes.OK).json({
             success: true,
@@ -654,7 +692,7 @@ const logout = async (req, res, next) => {
         });
     }
     catch (error) {
-        // Even if token verification fails, return success for logout
+        // Even if there's an error, return success for logout
         res.status(http_status_codes_1.StatusCodes.OK).json({
             success: true,
             statusCode: http_status_codes_1.StatusCodes.OK,
