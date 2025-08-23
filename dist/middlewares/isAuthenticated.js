@@ -11,11 +11,23 @@ const JWT_SECRET = process.env.JWT_SECRET;
 const isUserAuthenticated = async (req, res, next) => {
     let accessToken;
     const authHeader = req.headers.authorization;
+    console.log("🔍 Auth Debug - Headers:", {
+        authorization: authHeader,
+        cookies: req.cookies,
+        cookieHeader: req.headers.cookie,
+        origin: req.headers.origin,
+        referer: req.headers.referer,
+    });
     if (authHeader && authHeader.startsWith("Bearer ")) {
         accessToken = authHeader.split(" ")[1];
+        console.log("🔍 Token found in Authorization header");
     }
     else if (req.cookies?.accessToken) {
         accessToken = req.cookies.accessToken;
+        console.log("🔍 Token found in cookies");
+    }
+    else {
+        console.log("❌ No token found in Authorization header or cookies");
     }
     try {
         if (!accessToken) {
@@ -25,6 +37,7 @@ const isUserAuthenticated = async (req, res, next) => {
         const payload = jsonwebtoken_1.default.verify(accessToken, JWT_SECRET);
         console.log("🔍 JWT Payload:", {
             id: payload.id,
+            idType: typeof payload.id,
             email: payload.email,
             isActive: payload.isActive,
             tokenVersion: payload.tokenVersion,

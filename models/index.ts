@@ -56,6 +56,7 @@
 // export default db;
 
 // models/index.ts - Updated to use environment variables
+
 import fs from "fs";
 import path from "path";
 import { Sequelize, DataTypes } from "sequelize";
@@ -75,6 +76,10 @@ const db: any = {};
 
 let sequelize: Sequelize;
 
+// Determine if SSL is required
+const requireSSL = process.env.DB_SSL === "true";
+const isProduction = process.env.NODE_ENV === "production";
+
 // Use environment variables for database configuration
 const databaseConfig = {
   database: process.env.DB_NAME || process.env.DATABASE_NAME,
@@ -88,15 +93,24 @@ const databaseConfig = {
     | "sqlite"
     | "mariadb",
   logging: env === "development" ? console.log : false,
-  dialectOptions:
-    env === "production"
-      ? {
-          ssl: {
-            require: true,
-            rejectUnauthorized: false,
-          },
-        }
-      : {},
+  dialectOptions: requireSSL
+    ? {
+        ssl: {
+          require: true,
+          rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED === "true",
+        },
+      }
+    : isProduction
+    ? {
+        ssl: {
+          require: true,
+          rejectUnauthorized: false,
+        },
+      }
+    : {
+        // For development without SSL
+        ssl: false,
+      },
 };
 
 // Check if using a connection string (common in production)
@@ -105,6 +119,12 @@ if (process.env.DATABASE_URL) {
     dialect: databaseConfig.dialect,
     logging: databaseConfig.logging,
     dialectOptions: databaseConfig.dialectOptions,
+    pool: {
+      max: 5,
+      min: 0,
+      acquire: 30000,
+      idle: 10000,
+    },
   });
 } else {
   // Use individual connection parameters
@@ -118,6 +138,12 @@ if (process.env.DATABASE_URL) {
       dialect: databaseConfig.dialect,
       logging: databaseConfig.logging,
       dialectOptions: databaseConfig.dialectOptions,
+      pool: {
+        max: 5,
+        min: 0,
+        acquire: 30000,
+        idle: 10000,
+      },
     }
   );
 }

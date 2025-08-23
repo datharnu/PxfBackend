@@ -22,6 +22,9 @@ const env = process.env.NODE_ENV || "development";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = {};
 let sequelize;
+// Determine if SSL is required
+const requireSSL = process.env.DB_SSL === "true";
+const isProduction = process.env.NODE_ENV === "production";
 // Use environment variables for database configuration
 const databaseConfig = {
     database: process.env.DB_NAME || process.env.DATABASE_NAME,
@@ -31,14 +34,24 @@ const databaseConfig = {
     port: parseInt(process.env.DB_PORT || process.env.DATABASE_PORT || "5432"),
     dialect: (process.env.DB_DIALECT || "postgres"),
     logging: env === "development" ? console.log : false,
-    dialectOptions: env === "production"
+    dialectOptions: requireSSL
         ? {
             ssl: {
                 require: true,
-                rejectUnauthorized: false,
+                rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED === "true",
             },
         }
-        : {},
+        : isProduction
+            ? {
+                ssl: {
+                    require: true,
+                    rejectUnauthorized: false,
+                },
+            }
+            : {
+                // For development without SSL
+                ssl: false,
+            },
 };
 // Check if using a connection string (common in production)
 if (process.env.DATABASE_URL) {
@@ -46,6 +59,12 @@ if (process.env.DATABASE_URL) {
         dialect: databaseConfig.dialect,
         logging: databaseConfig.logging,
         dialectOptions: databaseConfig.dialectOptions,
+        pool: {
+            max: 5,
+            min: 0,
+            acquire: 30000,
+            idle: 10000,
+        },
     });
 }
 else {
@@ -56,6 +75,12 @@ else {
         dialect: databaseConfig.dialect,
         logging: databaseConfig.logging,
         dialectOptions: databaseConfig.dialectOptions,
+        pool: {
+            max: 5,
+            min: 0,
+            acquire: 30000,
+            idle: 10000,
+        },
     });
 }
 // Add models to db object

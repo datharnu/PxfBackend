@@ -20,6 +20,7 @@ router.post("/signin", [
         .withMessage("Must be a valid email address"),
 ], customValidations_1.validate, auth_1.login);
 router.get("/verify-refresh-token", auth_1.verifyRefreshToken);
+router.post("/refresh-token", auth_1.getNewAccessToken);
 router.get("/logout", auth_1.logout);
 router.post("/forgot-password", [
     (0, express_validator_1.body)("email")
@@ -46,4 +47,12 @@ router.post("/reset-password", [
         .withMessage("Must be a valid email address"),
 ], customValidations_1.validate, auth_1.resetPassword);
 router.get("/user", isAuthenticated_1.default, auth_1.getUserInfo);
+// Test endpoint to check authentication status
+router.get("/test-auth", isAuthenticated_1.default, (req, res) => {
+    res.status(200).json({
+        success: true,
+        message: "Authentication successful",
+        user: req.user,
+    });
+});
 exports.default = router;
