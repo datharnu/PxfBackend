@@ -19,17 +19,44 @@ exports.Event = event_1.default;
 (0, dotenv_1.config)(); // Load .env
 const basename = path_1.default.basename(__filename);
 const env = process.env.NODE_ENV || "development";
-const configPath = path_1.default.resolve(__dirname, "../config/config.json");
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const config = require(configPath)[env];
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = {};
 let sequelize;
-if (config.use_env_variable) {
-    exports.sequelize = sequelize = new sequelize_1.Sequelize(process.env[config.use_env_variable], config);
+// Use environment variables for database configuration
+const databaseConfig = {
+    database: process.env.DB_NAME || process.env.DATABASE_NAME,
+    username: process.env.DB_USER || process.env.DATABASE_USER,
+    password: process.env.DB_PASSWORD || process.env.DATABASE_PASSWORD,
+    host: process.env.DB_HOST || process.env.DATABASE_HOST || "localhost",
+    port: parseInt(process.env.DB_PORT || process.env.DATABASE_PORT || "5432"),
+    dialect: (process.env.DB_DIALECT || "postgres"),
+    logging: env === "development" ? console.log : false,
+    dialectOptions: env === "production"
+        ? {
+            ssl: {
+                require: true,
+                rejectUnauthorized: false,
+            },
+        }
+        : {},
+};
+// Check if using a connection string (common in production)
+if (process.env.DATABASE_URL) {
+    exports.sequelize = sequelize = new sequelize_1.Sequelize(process.env.DATABASE_URL, {
+        dialect: databaseConfig.dialect,
+        logging: databaseConfig.logging,
+        dialectOptions: databaseConfig.dialectOptions,
+    });
 }
 else {
-    exports.sequelize = sequelize = new sequelize_1.Sequelize(config.database, config.username, config.password, config);
+    // Use individual connection parameters
+    exports.sequelize = sequelize = new sequelize_1.Sequelize(databaseConfig.database, databaseConfig.username, databaseConfig.password, {
+        host: databaseConfig.host,
+        port: databaseConfig.port,
+        dialect: databaseConfig.dialect,
+        logging: databaseConfig.logging,
+        dialectOptions: databaseConfig.dialectOptions,
+    });
 }
 // Add models to db object
 db.User = user_1.default;
