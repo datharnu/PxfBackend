@@ -18,14 +18,18 @@ const auth_1 = __importDefault(require("./routes/auth"));
 const event_1 = __importDefault(require("./routes/event"));
 const app = (0, express_1.default)();
 const PORT = process.env.PORT || 3000;
-app.use((0, cors_1.default)({
-    origin: process.env.NODE_ENV === "production"
-        ? process.env.FRONTEND_URL || "http://localhost:3000"
-        : ["http://localhost:3000", "http://localhost:3001", "http://127.0.0.1:3000", "http://127.0.0.1:3001"], // Allow specific origins in development
-    credentials: true, // Allow cookies to be sent with requests
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Cookie"],
-}));
+// app.use(
+//   cors({
+//     origin:
+//       process.env.NODE_ENV === "production"
+//         ? process.env.FRONTEND_URL || "http://localhost:3000"
+//         : ["http://localhost:3000", "http://localhost:3001", "http://127.0.0.1:3000", "http://127.0.0.1:3001"], // Allow specific origins in development
+//     credentials: true, // Allow cookies to be sent with requests
+//     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+//     allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Cookie"],
+//   })
+// );
+app.use((0, cors_1.default)());
 app.use(express_1.default.json());
 app.use(express_1.default.urlencoded({ extended: false }));
 app.use((0, cookie_parser_1.default)());
