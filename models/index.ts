@@ -65,6 +65,7 @@ import { config as dotenvConfig } from "dotenv";
 // Import your models directly
 import User from "./user";
 import Event from "./event";
+import EventMedia from "./eventMedia";
 
 dotenvConfig(); // Load .env
 
@@ -151,6 +152,7 @@ if (process.env.DATABASE_URL) {
 // Add models to db object
 db.User = User;
 db.Event = Event;
+db.EventMedia = EventMedia;
 
 // Apply associations
 Object.keys(db).forEach((modelName) => {
@@ -163,4 +165,4 @@ db.sequelize = sequelize;
 db.Sequelize = Sequelize;
 
 export default db;
-export { User, Event, sequelize };
+export { User, Event, EventMedia, sequelize };

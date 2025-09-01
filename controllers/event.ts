@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import Event, { GuestLimit, PhotoCapLimit } from "../models/event";
 import User from "../models/user";
+import EventMedia from "../models/eventMedia";
 import BadRequestError from "../errors/badRequest";
 import NotFoundError from "../errors/notFound";
 import UnAuthorizedError from "../errors/unauthorized";
@@ -473,6 +474,7 @@ export const getEventBySlug = async (
   try {
     const { slug } = req.params;
     const { password } = req.body;
+    const userId = req.user?.id; // Optional authentication
 
     const event = await Event.findOne({
       where: { eventSlug: slug, isActive: true },
@@ -482,6 +484,21 @@ export const getEventBySlug = async (
           as: "creator",
           attributes: ["id", "fullname", "email"],
         },
+        {
+          model: EventMedia,
+          as: "media",
+          where: { isActive: true },
+          required: false,
+          include: [
+            {
+              model: User,
+              as: "uploader",
+              attributes: ["id", "fullname"],
+            },
+          ],
+          order: [["createdAt", "DESC"]],
+          limit: 10, // Show only recent 10 media items
+        },
       ],
     });
 
@@ -489,8 +506,11 @@ export const getEventBySlug = async (
       throw new NotFoundError("Event not found or inactive");
     }
 
-    // Check if password is required
-    if (event.isPasswordProtected && event.accessPassword) {
+    // Check if user is the event creator (bypass password requirement)
+    const isEventCreator = userId && event.createdBy === userId;
+
+    // Check if password is required (only if not the creator)
+    if (event.isPasswordProtected && event.accessPassword && !isEventCreator) {
       if (!password) {
         return res.status(StatusCodes.UNAUTHORIZED).json({
           success: false,
@@ -535,6 +555,7 @@ export const verifyEventAccess = async (
   try {
     const { slug } = req.params;
     const { password } = req.body;
+    const userId = req.user?.id; // Optional authentication
 
     const event = await Event.findOne({
       where: { eventSlug: slug, isActive: true },
@@ -543,6 +564,7 @@ export const verifyEventAccess = async (
         "eventSlug",
         "title",
         "isPasswordProtected",
+        "createdBy",
         "accessPassword",
       ],
     });
@@ -551,10 +573,22 @@ export const verifyEventAccess = async (
       throw new NotFoundError("Event not found or inactive");
     }
 
+    // Check if user is the event creator (bypass password requirement)
+    const isEventCreator = userId && event.createdBy === userId;
+
     if (!event.isPasswordProtected) {
       return res.status(StatusCodes.OK).json({
         success: true,
         message: "Event access granted",
+        requiresPassword: false,
+      });
+    }
+
+    // If user is the creator, grant access without password
+    if (isEventCreator) {
+      return res.status(StatusCodes.OK).json({
+        success: true,
+        message: "Event access granted (creator)",
         requiresPassword: false,
       });
     }

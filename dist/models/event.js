@@ -212,5 +212,10 @@ Event.associate = (models) => {
         foreignKey: "createdBy",
         as: "creator",
     });
+    // Event has many EventMedia
+    Event.hasMany(models.EventMedia, {
+        foreignKey: "eventId",
+        as: "media",
+    });
 };
 exports.default = Event;
