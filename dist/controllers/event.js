@@ -39,6 +39,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.verifyEventAccess = exports.getEventBySlug = exports.getEventStats = exports.getUserEvents = exports.deleteEvent = exports.updateEvent = exports.getEventById = exports.getAllEvents = exports.createEvent = void 0;
 const event_1 = __importStar(require("../models/event"));
 const user_1 = __importDefault(require("../models/user"));
+const eventMedia_1 = __importDefault(require("../models/eventMedia"));
 const badRequest_1 = __importDefault(require("../errors/badRequest"));
 const notFound_1 = __importDefault(require("../errors/notFound"));
 const unauthorized_1 = __importDefault(require("../errors/unauthorized"));
@@ -397,6 +398,7 @@ const getEventBySlug = async (req, res, next) => {
     try {
         const { slug } = req.params;
         const { password } = req.body;
+        const userId = req.user?.id; // Optional authentication
         const event = await event_1.default.findOne({
             where: { eventSlug: slug, isActive: true },
             include: [
@@ -405,13 +407,30 @@ const getEventBySlug = async (req, res, next) => {
                     as: "creator",
                     attributes: ["id", "fullname", "email"],
                 },
+                {
+                    model: eventMedia_1.default,
+                    as: "media",
+                    where: { isActive: true },
+                    required: false,
+                    include: [
+                        {
+                            model: user_1.default,
+                            as: "uploader",
+                            attributes: ["id", "fullname"],
+                        },
+                    ],
+                    order: [["createdAt", "DESC"]],
+                    limit: 10, // Show only recent 10 media items
+                },
             ],
         });
         if (!event) {
             throw new notFound_1.default("Event not found or inactive");
         }
-        // Check if password is required
-        if (event.isPasswordProtected && event.accessPassword) {
+        // Check if user is the event creator (bypass password requirement)
+        const isEventCreator = userId && event.createdBy === userId;
+        // Check if password is required (only if not the creator)
+        if (event.isPasswordProtected && event.accessPassword && !isEventCreator) {
             if (!password) {
                 return res.status(http_status_codes_1.StatusCodes.UNAUTHORIZED).json({
                     success: false,
@@ -447,6 +466,7 @@ const verifyEventAccess = async (req, res, next) => {
     try {
         const { slug } = req.params;
         const { password } = req.body;
+        const userId = req.user?.id; // Optional authentication
         const event = await event_1.default.findOne({
             where: { eventSlug: slug, isActive: true },
             attributes: [
@@ -454,16 +474,27 @@ const verifyEventAccess = async (req, res, next) => {
                 "eventSlug",
                 "title",
                 "isPasswordProtected",
+                "createdBy",
                 "accessPassword",
             ],
         });
         if (!event) {
             throw new notFound_1.default("Event not found or inactive");
         }
+        // Check if user is the event creator (bypass password requirement)
+        const isEventCreator = userId && event.createdBy === userId;
         if (!event.isPasswordProtected) {
             return res.status(http_status_codes_1.StatusCodes.OK).json({
                 success: true,
                 message: "Event access granted",
+                requiresPassword: false,
+            });
+        }
+        // If user is the creator, grant access without password
+        if (isEventCreator) {
+            return res.status(http_status_codes_1.StatusCodes.OK).json({
+                success: true,
+                message: "Event access granted (creator)",
                 requiresPassword: false,
             });
         }

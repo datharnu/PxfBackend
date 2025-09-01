@@ -262,6 +262,12 @@ Event.init(
     foreignKey: "createdBy",
     as: "creator",
   });
+
+  // Event has many EventMedia
+  Event.hasMany(models.EventMedia, {
+    foreignKey: "eventId",
+    as: "media",
+  });
 };
 
 export default Event;

@@ -423,6 +423,12 @@ User.init(
     foreignKey: "createdBy",
     as: "events",
   });
+
+  // User can have many EventMedia (uploads)
+  User.hasMany(models.EventMedia, {
+    foreignKey: "uploadedBy",
+    as: "uploadedMedia",
+  });
 };
 
 export default User;

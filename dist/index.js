@@ -16,6 +16,7 @@ const models_1 = __importDefault(require("./models"));
 // Routers
 const auth_1 = __importDefault(require("./routes/auth"));
 const event_1 = __importDefault(require("./routes/event"));
+const media_1 = __importDefault(require("./routes/media"));
 const app = (0, express_1.default)();
 const PORT = process.env.PORT || 3000;
 // app.use(
@@ -33,6 +34,8 @@ app.use((0, cors_1.default)());
 app.use(express_1.default.json());
 app.use(express_1.default.urlencoded({ extended: false }));
 app.use((0, cookie_parser_1.default)());
+// Serve static files (uploaded media)
+app.use("/uploads", express_1.default.static("uploads"));
 // Health check endpoint
 app.get("/health", (req, res) => {
     res.status(200).json({
@@ -44,6 +47,7 @@ app.get("/health", (req, res) => {
 // API Routes
 app.use("/api/v1/auth", auth_1.default);
 app.use("/api/v1/events", event_1.default);
+app.use("/api/v1/media", media_1.default);
 // Error handling middleware (must be last)
 app.use(errorHandler_1.default);
 app.get("/", (req, res) => {

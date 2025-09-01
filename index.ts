@@ -15,6 +15,7 @@ import db from "./models";
 // Routers
 import authRouter from "./routes/auth";
 import eventRouter from "./routes/event";
+import mediaRouter from "./routes/media";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -36,6 +37,9 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 
+// Serve static files (uploaded media)
+app.use("/uploads", express.static("uploads"));
+
 // Health check endpoint
 app.get("/health", (req: Request, res: Response) => {
   res.status(200).json({
@@ -48,6 +52,7 @@ app.get("/health", (req: Request, res: Response) => {
 // API Routes
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/events", eventRouter);
+app.use("/api/v1/media", mediaRouter);
 
 // Error handling middleware (must be last)
 app.use(errorHandlerMiddleware);

@@ -349,5 +349,10 @@ User.associate = (models) => {
         foreignKey: "createdBy",
         as: "events",
     });
+    // User can have many EventMedia (uploads)
+    User.hasMany(models.EventMedia, {
+        foreignKey: "uploadedBy",
+        as: "uploadedMedia",
+    });
 };
 exports.default = User;
