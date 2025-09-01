@@ -17,6 +17,7 @@ interface EventMediaAttributes {
   fileName: string; // Original filename
   fileSize: number; // File size in bytes
   mimeType: string; // MIME type of the file
+  cloudinaryPublicId?: string;
   isActive?: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -39,6 +40,7 @@ class EventMedia
   public uploadedBy!: string;
   public mediaType!: MediaType;
   public mediaUrl!: string;
+  public cloudinaryPublicId?: string;
   public fileName!: string;
   public fileSize!: number;
   public mimeType!: string;
@@ -154,6 +156,11 @@ EventMedia.init(
         len: [1, 100],
       },
     },
+    cloudinaryPublicId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      field: "cloudinary_public_id",
+    },
     isActive: {
       type: DataTypes.BOOLEAN,
       defaultValue: true,
@@ -208,4 +215,3 @@ EventMedia.init(
 };
 
 export default EventMedia;
-

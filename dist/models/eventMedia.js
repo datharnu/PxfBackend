@@ -119,6 +119,11 @@ EventMedia.init({
             len: [1, 100],
         },
     },
+    cloudinaryPublicId: {
+        type: sequelize_1.DataTypes.STRING,
+        allowNull: true,
+        field: "cloudinary_public_id",
+    },
     isActive: {
         type: sequelize_1.DataTypes.BOOLEAN,
         defaultValue: true,
