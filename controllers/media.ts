@@ -286,16 +286,16 @@ export const getCloudinarySignature = async (
     // Generate timestamp for signature
     const timestamp = Math.round(new Date().getTime() / 1000);
 
-    // Parameters for Cloudinary upload
+    // Parameters for Cloudinary upload - MUST match exactly what frontend sends
     const params = {
-      timestamp: timestamp,
       folder: `events/${eventId}`,
+      timestamp: timestamp,
+      // Add these additional parameters that are commonly used
       quality: "auto:best",
       fetch_format: "auto",
-      flags: "progressive",
     };
 
-    // Generate signature
+    // Generate signature using only the parameters that will be sent
     const signature = cloudinary.utils.api_sign_request(
       params,
       process.env.CLOUDINARY_API_SECRET!
@@ -309,6 +309,8 @@ export const getCloudinarySignature = async (
       apiKey: process.env.CLOUDINARY_API_KEY,
       folder: `events/${eventId}`,
       remainingUploads: photoCapLimit - userUploads,
+      // Include the exact params used for signing (for frontend reference)
+      signedParams: params,
     });
   } catch (error) {
     console.error("Get Cloudinary signature error:", error);
