@@ -36,36 +36,131 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.uploadMiddleware = exports.getEventMediaBySlug = exports.deleteUserMedia = exports.getEventUploadStats = exports.getUserEventUploads = exports.getEventMedia = exports.uploadEventMedia = void 0;
+exports.uploadMiddleware = exports.getEventMediaBySlug = exports.deleteUserMedia = exports.getEventUploadStats = exports.getUserEventUploads = exports.getEventMedia = exports.getCloudinarySignature = exports.submitCloudinaryMedia = void 0;
 const http_status_codes_1 = require("http-status-codes");
+const cloudinary_1 = require("cloudinary");
 const event_1 = __importDefault(require("../models/event"));
 const eventMedia_1 = __importStar(require("../models/eventMedia"));
 const user_1 = __importDefault(require("../models/user"));
 const badRequest_1 = __importDefault(require("../errors/badRequest"));
 const notFound_1 = __importDefault(require("../errors/notFound"));
 const unauthorized_1 = __importDefault(require("../errors/unauthorized"));
-const fileUpload_1 = __importStar(require("../utils/fileUpload"));
+const fileUpload_1 = __importDefault(require("../utils/fileUpload"));
+cloudinary_1.v2.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 // Upload media to event
-const uploadEventMedia = async (req, res, next) => {
+// export const uploadEventMedia = async (
+//   req: Request,
+//   res: Response,
+//   next: NextFunction
+// ) => {
+//   try {
+//     const { eventId } = req.params;
+//     const userId = req.user?.id;
+//     if (!userId) {
+//       throw new BadRequestError("User authentication required");
+//     }
+//     if (!req.files || req.files.length === 0) {
+//       throw new BadRequestError("No files uploaded");
+//     }
+//     // Find the event
+//     const event = await Event.findByPk(eventId);
+//     if (!event) {
+//       throw new NotFoundError("Event not found");
+//     }
+//     // Check if event is active
+//     if (!event.isActive) {
+//       throw new BadRequestError("Event is not active");
+//     }
+//     // Get user's existing uploads for this event
+//     const userUploads = await EventMedia.count({
+//       where: {
+//         eventId,
+//         uploadedBy: userId,
+//         isActive: true,
+//       },
+//     });
+//     // Check if user has reached their photo cap limit
+//     const photoCapLimit = parseInt(event.photoCapLimit);
+//     if (userUploads >= photoCapLimit) {
+//       throw new BadRequestError(
+//         `You have reached your upload limit of ${photoCapLimit} files for this event`
+//       );
+//     }
+//     // Check if adding new files would exceed the limit
+//     const filesToUpload = Array.isArray(req.files) ? req.files.length : 1;
+//     if (userUploads + filesToUpload > photoCapLimit) {
+//       throw new BadRequestError(
+//         `Uploading ${filesToUpload} files would exceed your limit of ${photoCapLimit}. You have ${
+//           photoCapLimit - userUploads
+//         } uploads remaining.`
+//       );
+//     }
+//     // Process uploaded files
+//     const uploadedFiles = Array.isArray(req.files) ? req.files : [req.files];
+//     const mediaRecords = [];
+//     for (const file of uploadedFiles as Express.Multer.File[]) {
+//       const mediaType = getMediaTypeFromMimeType(file.mimetype);
+//       const mediaUrl = getFileUrl(eventId, file.filename);
+//       const mediaRecord = await EventMedia.create({
+//         eventId,
+//         uploadedBy: userId,
+//         mediaType,
+//         mediaUrl,
+//         fileName: file.originalname,
+//         fileSize: file.size,
+//         mimeType: file.mimetype,
+//       });
+//       mediaRecords.push(mediaRecord);
+//     }
+//     // Get updated upload count for response
+//     const updatedUserUploads = await EventMedia.count({
+//       where: {
+//         eventId,
+//         uploadedBy: userId,
+//         isActive: true,
+//       },
+//     });
+//     const remainingUploads = photoCapLimit - updatedUserUploads;
+//     return res.status(StatusCodes.CREATED).json({
+//       success: true,
+//       message: "Media uploaded successfully",
+//       uploadedMedia: mediaRecords,
+//       uploadStats: {
+//         totalUploads: updatedUserUploads,
+//         remainingUploads,
+//         photoCapLimit,
+//       },
+//     });
+//   } catch (error) {
+//     console.error("Upload media error:", error);
+//     next(error);
+//   }
+// };
+// FAST METHOD: Submit Cloudinary URLs (Frontend uploads directly to Cloudinary)
+const submitCloudinaryMedia = async (req, res, next) => {
     try {
         const { eventId } = req.params;
+        const { mediaUrls } = req.body;
         const userId = req.user?.id;
         if (!userId) {
             throw new badRequest_1.default("User authentication required");
         }
-        if (!req.files || req.files.length === 0) {
-            throw new badRequest_1.default("No files uploaded");
+        if (!mediaUrls || !Array.isArray(mediaUrls) || mediaUrls.length === 0) {
+            throw new badRequest_1.default("No media URLs provided");
         }
         // Find the event
         const event = await event_1.default.findByPk(eventId);
         if (!event) {
             throw new notFound_1.default("Event not found");
         }
-        // Check if event is active
         if (!event.isActive) {
             throw new badRequest_1.default("Event is not active");
         }
-        // Get user's existing uploads for this event
+        // Get user's existing uploads
         const userUploads = await eventMedia_1.default.count({
             where: {
                 eventId,
@@ -73,34 +168,39 @@ const uploadEventMedia = async (req, res, next) => {
                 isActive: true,
             },
         });
-        // Check if user has reached their photo cap limit
         const photoCapLimit = parseInt(event.photoCapLimit);
+        // Check limits
         if (userUploads >= photoCapLimit) {
             throw new badRequest_1.default(`You have reached your upload limit of ${photoCapLimit} files for this event`);
         }
-        // Check if adding new files would exceed the limit
-        const filesToUpload = Array.isArray(req.files) ? req.files.length : 1;
-        if (userUploads + filesToUpload > photoCapLimit) {
-            throw new badRequest_1.default(`Uploading ${filesToUpload} files would exceed your limit of ${photoCapLimit}. You have ${photoCapLimit - userUploads} uploads remaining.`);
+        if (userUploads + mediaUrls.length > photoCapLimit) {
+            throw new badRequest_1.default(`Submitting ${mediaUrls.length} files would exceed your limit of ${photoCapLimit}. You have ${photoCapLimit - userUploads} uploads remaining.`);
         }
-        // Process uploaded files
-        const uploadedFiles = Array.isArray(req.files) ? req.files : [req.files];
+        // Validate Cloudinary URLs belong to your cloud (security check)
+        const validCloudinaryDomain = `https://res.cloudinary.com/${process.env.CLOUDINARY_CLOUD_NAME}/`;
+        // Create database records
         const mediaRecords = [];
-        for (const file of uploadedFiles) {
-            const mediaType = (0, fileUpload_1.getMediaTypeFromMimeType)(file.mimetype);
-            const mediaUrl = (0, fileUpload_1.getFileUrl)(eventId, file.filename);
+        for (const mediaData of mediaUrls) {
+            // Security: Verify URL is from your Cloudinary account
+            if (!mediaData.url.startsWith(validCloudinaryDomain)) {
+                throw new badRequest_1.default(`Invalid media URL: ${mediaData.fileName}`);
+            }
+            const mediaType = mediaData.mimeType.startsWith("video/")
+                ? eventMedia_1.MediaType.VIDEO
+                : eventMedia_1.MediaType.IMAGE;
             const mediaRecord = await eventMedia_1.default.create({
                 eventId,
                 uploadedBy: userId,
                 mediaType,
-                mediaUrl,
-                fileName: file.originalname,
-                fileSize: file.size,
-                mimeType: file.mimetype,
+                mediaUrl: mediaData.url,
+                fileName: mediaData.fileName,
+                fileSize: mediaData.fileSize,
+                mimeType: mediaData.mimeType,
+                cloudinaryPublicId: mediaData.publicId,
             });
             mediaRecords.push(mediaRecord);
         }
-        // Get updated upload count for response
+        // Get updated stats
         const updatedUserUploads = await eventMedia_1.default.count({
             where: {
                 eventId,
@@ -108,24 +208,79 @@ const uploadEventMedia = async (req, res, next) => {
                 isActive: true,
             },
         });
-        const remainingUploads = photoCapLimit - updatedUserUploads;
         return res.status(http_status_codes_1.StatusCodes.CREATED).json({
             success: true,
             message: "Media uploaded successfully",
             uploadedMedia: mediaRecords,
             uploadStats: {
                 totalUploads: updatedUserUploads,
-                remainingUploads,
+                remainingUploads: photoCapLimit - updatedUserUploads,
                 photoCapLimit,
             },
         });
     }
     catch (error) {
-        console.error("Upload media error:", error);
+        console.error("Submit Cloudinary media error:", error);
         next(error);
     }
 };
-exports.uploadEventMedia = uploadEventMedia;
+exports.submitCloudinaryMedia = submitCloudinaryMedia;
+// Generate Cloudinary signature for secure frontend uploads
+const getCloudinarySignature = async (req, res, next) => {
+    try {
+        const { eventId } = req.params;
+        const userId = req.user?.id;
+        if (!userId) {
+            throw new badRequest_1.default("User authentication required");
+        }
+        // Find the event
+        const event = await event_1.default.findByPk(eventId);
+        if (!event) {
+            throw new notFound_1.default("Event not found");
+        }
+        if (!event.isActive) {
+            throw new badRequest_1.default("Event is not active");
+        }
+        // Check user's current upload count
+        const userUploads = await eventMedia_1.default.count({
+            where: {
+                eventId,
+                uploadedBy: userId,
+                isActive: true,
+            },
+        });
+        const photoCapLimit = parseInt(event.photoCapLimit);
+        if (userUploads >= photoCapLimit) {
+            throw new badRequest_1.default(`You have reached your upload limit of ${photoCapLimit} files for this event`);
+        }
+        // Generate timestamp for signature
+        const timestamp = Math.round(new Date().getTime() / 1000);
+        // Parameters for Cloudinary upload
+        const params = {
+            timestamp: timestamp,
+            folder: `events/${eventId}`,
+            quality: "auto:best",
+            fetch_format: "auto",
+            flags: "progressive",
+        };
+        // Generate signature
+        const signature = cloudinary_1.v2.utils.api_sign_request(params, process.env.CLOUDINARY_API_SECRET);
+        return res.status(http_status_codes_1.StatusCodes.OK).json({
+            success: true,
+            signature,
+            timestamp,
+            cloudName: process.env.CLOUDINARY_CLOUD_NAME,
+            apiKey: process.env.CLOUDINARY_API_KEY,
+            folder: `events/${eventId}`,
+            remainingUploads: photoCapLimit - userUploads,
+        });
+    }
+    catch (error) {
+        console.error("Get Cloudinary signature error:", error);
+        next(error);
+    }
+};
+exports.getCloudinarySignature = getCloudinarySignature;
 // Get all media for an event
 const getEventMedia = async (req, res, next) => {
     try {

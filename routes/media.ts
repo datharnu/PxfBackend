@@ -1,15 +1,17 @@
 import express from "express";
-import { param, query } from "express-validator";
+import { body, param, query } from "express-validator";
 import { validate } from "../utils/customValidations";
 import isUserAuthenticated from "../middlewares/isAuthenticated";
 import {
-  uploadEventMedia,
+  // uploadEventMedia,
   getEventMedia,
   getUserEventUploads,
   getEventUploadStats,
   deleteUserMedia,
   getEventMediaBySlug,
   uploadMiddleware,
+  submitCloudinaryMedia,
+  getCloudinarySignature,
 } from "../controllers/media";
 
 const router = express.Router();
@@ -43,12 +45,40 @@ router.get(
 router.use(isUserAuthenticated);
 
 // Upload media to event
-router.post(
-  "/event/:eventId/upload",
+// router.post(
+//   "/event/:eventId/upload",
+//   [param("eventId").isUUID().withMessage("Event ID must be a valid UUID")],
+//   validate,
+//   uploadMiddleware,
+//   uploadEventMedia
+// );
+
+// Get Cloudinary signature (for frontend authentication)
+router.get(
+  "/event/:eventId/cloudinary-signature",
   [param("eventId").isUUID().withMessage("Event ID must be a valid UUID")],
   validate,
-  uploadMiddleware,
-  uploadEventMedia
+  getCloudinarySignature
+);
+
+// Submit media URLs after Cloudinary upload (MAIN UPLOAD METHOD)
+router.post(
+  "/event/:eventId/submit-media",
+  [
+    param("eventId").isUUID().withMessage("Event ID must be a valid UUID"),
+    body("mediaUrls").isArray().withMessage("Media URLs must be an array"),
+    body("mediaUrls.*.url").isURL().withMessage("Invalid media URL"),
+    body("mediaUrls.*.fileName").notEmpty().withMessage("File name required"),
+    body("mediaUrls.*.fileSize")
+      .isNumeric()
+      .withMessage("File size must be numeric"),
+    body("mediaUrls.*.mimeType").notEmpty().withMessage("MIME type required"),
+    body("mediaUrls.*.publicId")
+      .notEmpty()
+      .withMessage("Cloudinary public ID required"),
+  ],
+  validate,
+  submitCloudinaryMedia
 );
 
 // Get all media for an event

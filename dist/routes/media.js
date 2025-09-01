@@ -31,7 +31,29 @@ router.get("/event/:slug", [
 // Protected routes - authentication required
 router.use(isAuthenticated_1.default);
 // Upload media to event
-router.post("/event/:eventId/upload", [(0, express_validator_1.param)("eventId").isUUID().withMessage("Event ID must be a valid UUID")], customValidations_1.validate, media_1.uploadMiddleware, media_1.uploadEventMedia);
+// router.post(
+//   "/event/:eventId/upload",
+//   [param("eventId").isUUID().withMessage("Event ID must be a valid UUID")],
+//   validate,
+//   uploadMiddleware,
+//   uploadEventMedia
+// );
+// Get Cloudinary signature (for frontend authentication)
+router.get("/event/:eventId/cloudinary-signature", [(0, express_validator_1.param)("eventId").isUUID().withMessage("Event ID must be a valid UUID")], customValidations_1.validate, media_1.getCloudinarySignature);
+// Submit media URLs after Cloudinary upload (MAIN UPLOAD METHOD)
+router.post("/event/:eventId/submit-media", [
+    (0, express_validator_1.param)("eventId").isUUID().withMessage("Event ID must be a valid UUID"),
+    (0, express_validator_1.body)("mediaUrls").isArray().withMessage("Media URLs must be an array"),
+    (0, express_validator_1.body)("mediaUrls.*.url").isURL().withMessage("Invalid media URL"),
+    (0, express_validator_1.body)("mediaUrls.*.fileName").notEmpty().withMessage("File name required"),
+    (0, express_validator_1.body)("mediaUrls.*.fileSize")
+        .isNumeric()
+        .withMessage("File size must be numeric"),
+    (0, express_validator_1.body)("mediaUrls.*.mimeType").notEmpty().withMessage("MIME type required"),
+    (0, express_validator_1.body)("mediaUrls.*.publicId")
+        .notEmpty()
+        .withMessage("Cloudinary public ID required"),
+], customValidations_1.validate, media_1.submitCloudinaryMedia);
 // Get all media for an event
 router.get("/event/:eventId", [
     (0, express_validator_1.param)("eventId").isUUID().withMessage("Event ID must be a valid UUID"),
