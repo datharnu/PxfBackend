@@ -366,6 +366,12 @@ export const getCloudinarySignature = async (
       timestamp: timestamp,
     };
 
+    console.log("Params being signed:", params);
+    console.log(
+      "String being signed:",
+      `folder=${params.folder}&timestamp=${params.timestamp}`
+    );
+
     // Generate signature using only the parameters that will be sent
     const signature = cloudinary.utils.api_sign_request(
       params,
