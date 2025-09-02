@@ -226,6 +226,70 @@ const submitCloudinaryMedia = async (req, res, next) => {
 };
 exports.submitCloudinaryMedia = submitCloudinaryMedia;
 // Generate Cloudinary signature for secure frontend uploads
+// export const getCloudinarySignature = async (
+//   req: Request,
+//   res: Response,
+//   next: NextFunction
+// ) => {
+//   try {
+//     const { eventId } = req.params;
+//     const userId = req.user?.id;
+//     if (!userId) {
+//       throw new BadRequestError("User authentication required");
+//     }
+//     // Find the event
+//     const event = await Event.findByPk(eventId);
+//     if (!event) {
+//       throw new NotFoundError("Event not found");
+//     }
+//     if (!event.isActive) {
+//       throw new BadRequestError("Event is not active");
+//     }
+//     // Check user's current upload count
+//     const userUploads = await EventMedia.count({
+//       where: {
+//         eventId,
+//         uploadedBy: userId,
+//         isActive: true,
+//       },
+//     });
+//     const photoCapLimit = parseInt(event.photoCapLimit as string);
+//     if (userUploads >= photoCapLimit) {
+//       throw new BadRequestError(
+//         `You have reached your upload limit of ${photoCapLimit} files for this event`
+//       );
+//     }
+//     // Generate timestamp for signature
+//     const timestamp = Math.round(new Date().getTime() / 1000);
+//     // Parameters for Cloudinary upload - MUST match exactly what frontend sends
+//     const params = {
+//       folder: `events/${eventId}`,
+//       timestamp: timestamp,
+//       // Add these additional parameters that are commonly used
+//       quality: "auto:best",
+//       fetch_format: "auto",
+//     };
+//     // Generate signature using only the parameters that will be sent
+//     const signature = cloudinary.utils.api_sign_request(
+//       params,
+//       process.env.CLOUDINARY_API_SECRET!
+//     );
+//     return res.status(StatusCodes.OK).json({
+//       success: true,
+//       signature,
+//       timestamp,
+//       cloudName: process.env.CLOUDINARY_CLOUD_NAME,
+//       apiKey: process.env.CLOUDINARY_API_KEY,
+//       folder: `events/${eventId}`,
+//       remainingUploads: photoCapLimit - userUploads,
+//       // Include the exact params used for signing (for frontend reference)
+//       signedParams: params,
+//     });
+//   } catch (error) {
+//     console.error("Get Cloudinary signature error:", error);
+//     next(error);
+//   }
+// };
 const getCloudinarySignature = async (req, res, next) => {
     try {
         const { eventId } = req.params;
@@ -259,9 +323,6 @@ const getCloudinarySignature = async (req, res, next) => {
         const params = {
             folder: `events/${eventId}`,
             timestamp: timestamp,
-            // Add these additional parameters that are commonly used
-            quality: "auto:best",
-            fetch_format: "auto",
         };
         // Generate signature using only the parameters that will be sent
         const signature = cloudinary_1.v2.utils.api_sign_request(params, process.env.CLOUDINARY_API_SECRET);
@@ -273,8 +334,6 @@ const getCloudinarySignature = async (req, res, next) => {
             apiKey: process.env.CLOUDINARY_API_KEY,
             folder: `events/${eventId}`,
             remainingUploads: photoCapLimit - userUploads,
-            // Include the exact params used for signing (for frontend reference)
-            signedParams: params,
         });
     }
     catch (error) {
