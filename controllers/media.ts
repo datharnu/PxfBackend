@@ -364,15 +364,13 @@ export const getCloudinarySignature = async (
     const params = {
       folder: `events/${eventId}`,
       timestamp: timestamp,
-      quality: "auto:best",
-      fetch_format: "auto",
     };
 
-    console.log("Params being signed:", params);
-    console.log(
-      "String being signed:",
-      `folder=${params.folder}&timestamp=${params.timestamp}`
-    );
+    // console.log("Params being signed:", params);
+    // console.log(
+    //   "String being signed:",
+    //   `folder=${params.folder}&timestamp=${params.timestamp}`
+    // );
 
     // Generate signature using only the parameters that will be sent
     const signature = cloudinary.utils.api_sign_request(
@@ -380,7 +378,7 @@ export const getCloudinarySignature = async (
       process.env.CLOUDINARY_API_SECRET!
     );
 
-    console.log("Generated signature:", signature);
+    // console.log("Generated signature:", signature);
 
     return res.status(StatusCodes.OK).json({
       success: true,
