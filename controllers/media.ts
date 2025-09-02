@@ -378,6 +378,8 @@ export const getCloudinarySignature = async (
       process.env.CLOUDINARY_API_SECRET!
     );
 
+    console.log("Generated signature:", signature);
+
     return res.status(StatusCodes.OK).json({
       success: true,
       signature,

@@ -328,6 +328,7 @@ const getCloudinarySignature = async (req, res, next) => {
         console.log("String being signed:", `folder=${params.folder}&timestamp=${params.timestamp}`);
         // Generate signature using only the parameters that will be sent
         const signature = cloudinary_1.v2.utils.api_sign_request(params, process.env.CLOUDINARY_API_SECRET);
+        console.log("Generated signature:", signature);
         return res.status(http_status_codes_1.StatusCodes.OK).json({
             success: true,
             signature,
