@@ -364,6 +364,8 @@ export const getCloudinarySignature = async (
     const params = {
       folder: `events/${eventId}`,
       timestamp: timestamp,
+      quality: "auto:best",
+      fetch_format: "auto",
     };
 
     console.log("Params being signed:", params);
