@@ -17,6 +17,7 @@ const models_1 = __importDefault(require("./models"));
 const auth_1 = __importDefault(require("./routes/auth"));
 const event_1 = __importDefault(require("./routes/event"));
 const media_1 = __importDefault(require("./routes/media"));
+const payment_1 = __importDefault(require("./routes/payment"));
 const app = (0, express_1.default)();
 const PORT = process.env.PORT || 3000;
 // app.use(
@@ -48,6 +49,7 @@ app.get("/health", (req, res) => {
 app.use("/api/v1/auth", auth_1.default);
 app.use("/api/v1/events", event_1.default);
 app.use("/api/v1/media", media_1.default);
+app.use("/api/v1/payments", payment_1.default);
 // Error handling middleware (must be last)
 app.use(errorHandler_1.default);
 app.get("/", (req, res) => {

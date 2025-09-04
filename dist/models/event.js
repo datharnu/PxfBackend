@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PhotoCapLimit = exports.GuestLimit = void 0;
+exports.PaymentStatus = exports.PhotoCapLimit = exports.GuestLimit = void 0;
 const db_1 = __importDefault(require("../config/db"));
 const sequelize_1 = require("sequelize");
 // Define the guest limit enum values
@@ -14,7 +14,8 @@ var GuestLimit;
     GuestLimit["TWO_FIFTY"] = "250";
     GuestLimit["FIVE_HUNDRED"] = "500";
     GuestLimit["EIGHT_HUNDRED"] = "800";
-    GuestLimit["ONE_THOUSAND_PLUS"] = "1000+";
+    GuestLimit["ONE_THOUSAND"] = "1000";
+    GuestLimit["CUSTOM"] = "CUSTOM";
 })(GuestLimit || (exports.GuestLimit = GuestLimit = {}));
 // Define the photo capture limit enum values
 var PhotoCapLimit;
@@ -24,7 +25,15 @@ var PhotoCapLimit;
     PhotoCapLimit["FIFTEEN"] = "15";
     PhotoCapLimit["TWENTY"] = "20";
     PhotoCapLimit["TWENTY_FIVE"] = "25";
+    PhotoCapLimit["CUSTOM"] = "CUSTOM";
 })(PhotoCapLimit || (exports.PhotoCapLimit = PhotoCapLimit = {}));
+// Payment status for event plan
+var PaymentStatus;
+(function (PaymentStatus) {
+    PaymentStatus["FREE"] = "FREE";
+    PaymentStatus["PENDING"] = "PENDING";
+    PaymentStatus["PAID"] = "PAID";
+})(PaymentStatus || (exports.PaymentStatus = PaymentStatus = {}));
 // Define the Event model class
 class Event extends sequelize_1.Model {
     // Method to check if event is upcoming
@@ -91,7 +100,7 @@ Event.init({
         validate: {
             isIn: {
                 args: [Object.values(GuestLimit)],
-                msg: "Guest limit must be one of: 10, 100, 250, 500, 800, 1000+",
+                msg: "Guest limit must be one of: 10, 100, 250, 500, 800, 1000, CUSTOM",
             },
         },
     },
@@ -101,7 +110,37 @@ Event.init({
         validate: {
             isIn: {
                 args: [Object.values(PhotoCapLimit)],
-                msg: "Photo capture limit must be one of: 5, 10, 15, 20, 25",
+                msg: "Photo capture limit must be one of: 5, 10, 15, 20, 25, CUSTOM",
+            },
+        },
+    },
+    customGuestLimit: {
+        type: sequelize_1.DataTypes.INTEGER,
+        allowNull: true,
+        validate: {
+            min: 1,
+            isInt: true,
+            customIsRequiredWhenGuestCustom(value) {
+                if (this.guestLimit === GuestLimit.CUSTOM) {
+                    if (!value || value <= 1000) {
+                        throw new Error("customGuestLimit must be > 1000 when guestLimit is CUSTOM");
+                    }
+                }
+            },
+        },
+    },
+    customPhotoCapLimit: {
+        type: sequelize_1.DataTypes.INTEGER,
+        allowNull: true,
+        validate: {
+            min: 1,
+            isInt: true,
+            customIsRequiredWhenPhotoCustom(value) {
+                if (this.photoCapLimit === PhotoCapLimit.CUSTOM) {
+                    if (!value || value <= 25) {
+                        throw new Error("customPhotoCapLimit must be > 25 when photoCapLimit is CUSTOM");
+                    }
+                }
             },
         },
     },
@@ -173,6 +212,24 @@ Event.init({
     isPasswordProtected: {
         type: sequelize_1.DataTypes.BOOLEAN,
         defaultValue: false,
+    },
+    paymentStatus: {
+        type: sequelize_1.DataTypes.ENUM("FREE", "PENDING", "PAID"),
+        allowNull: false,
+        defaultValue: "FREE",
+    },
+    planPrice: {
+        type: sequelize_1.DataTypes.INTEGER,
+        allowNull: true,
+    },
+    paystackReference: {
+        type: sequelize_1.DataTypes.STRING,
+        allowNull: true,
+        unique: true,
+    },
+    paidAt: {
+        type: sequelize_1.DataTypes.DATE,
+        allowNull: true,
     },
     createdAt: {
         type: sequelize_1.DataTypes.DATE,

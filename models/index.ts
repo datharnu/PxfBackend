@@ -66,6 +66,8 @@ import { config as dotenvConfig } from "dotenv";
 import User from "./user";
 import Event from "./event";
 import EventMedia from "./eventMedia";
+import PlanPricing from "./planPricing";
+import CustomPricingTier from "./customPricingTier";
 
 dotenvConfig(); // Load .env
 
@@ -153,6 +155,8 @@ if (process.env.DATABASE_URL) {
 db.User = User;
 db.Event = Event;
 db.EventMedia = EventMedia;
+db.PlanPricing = PlanPricing;
+db.CustomPricingTier = CustomPricingTier;
 
 // Apply associations
 Object.keys(db).forEach((modelName) => {
@@ -165,4 +169,4 @@ db.sequelize = sequelize;
 db.Sequelize = Sequelize;
 
 export default db;
-export { User, Event, EventMedia, sequelize };
+export { User, Event, EventMedia, PlanPricing, CustomPricingTier, sequelize };

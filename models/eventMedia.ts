@@ -47,6 +47,7 @@ class EventMedia
   public isActive?: boolean;
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
+  uploader: any;
 
   // Method to get file size in human readable format
   public getFileSizeFormatted(): string {
