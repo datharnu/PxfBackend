@@ -8,7 +8,8 @@ export enum GuestLimit {
   TWO_FIFTY = "250",
   FIVE_HUNDRED = "500",
   EIGHT_HUNDRED = "800",
-  ONE_THOUSAND_PLUS = "1000+",
+  ONE_THOUSAND = "1000",
+  CUSTOM = "CUSTOM",
 }
 
 // Define the photo capture limit enum values
@@ -18,6 +19,14 @@ export enum PhotoCapLimit {
   FIFTEEN = "15",
   TWENTY = "20",
   TWENTY_FIVE = "25",
+  CUSTOM = "CUSTOM",
+}
+
+// Payment status for event plan
+export enum PaymentStatus {
+  FREE = "FREE",
+  PENDING = "PENDING",
+  PAID = "PAID",
 }
 
 // Define the Event attributes interface
@@ -28,13 +37,19 @@ interface EventAttributes {
   eventFlyer?: string; // URL/path to the cover photo/flyer
   guestLimit: GuestLimit;
   photoCapLimit: PhotoCapLimit;
+  customGuestLimit?: number | null;
+  customPhotoCapLimit?: number | null;
   createdBy: string; // User ID who created the event
   isActive?: boolean;
   eventDate?: Date;
-  eventSlug: string; // Unique URL slug for accessing the event
+  eventSlug?: string; // Unique URL slug for accessing the event
   qrCodeData?: string; // QR code data URL (base64)
   accessPassword?: string; // Optional password for event access
   isPasswordProtected?: boolean; // Whether the event requires a password
+  paymentStatus?: PaymentStatus;
+  planPrice?: number | null; // NGN
+  paystackReference?: string | null;
+  paidAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -57,13 +72,19 @@ class Event
   public eventFlyer?: string;
   public guestLimit!: GuestLimit;
   public photoCapLimit!: PhotoCapLimit;
+  public customGuestLimit?: number | null;
+  public customPhotoCapLimit?: number | null;
   public createdBy!: string;
   public isActive?: boolean;
   public eventDate?: Date;
-  public eventSlug!: string;
+  public eventSlug?: string;
   public qrCodeData?: string;
   public accessPassword?: string;
   public isPasswordProtected?: boolean;
+  public paymentStatus?: PaymentStatus;
+  public planPrice?: number | null;
+  public paystackReference?: string | null;
+  public paidAt?: Date | null;
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 
@@ -136,7 +157,7 @@ Event.init(
       validate: {
         isIn: {
           args: [Object.values(GuestLimit)],
-          msg: "Guest limit must be one of: 10, 100, 250, 500, 800, 1000+",
+          msg: "Guest limit must be one of: 10, 100, 250, 500, 800, 1000, CUSTOM",
         },
       },
     },
@@ -146,7 +167,41 @@ Event.init(
       validate: {
         isIn: {
           args: [Object.values(PhotoCapLimit)],
-          msg: "Photo capture limit must be one of: 5, 10, 15, 20, 25",
+          msg: "Photo capture limit must be one of: 5, 10, 15, 20, 25, CUSTOM",
+        },
+      },
+    },
+    customGuestLimit: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      validate: {
+        min: 1,
+        isInt: true,
+        customIsRequiredWhenGuestCustom(this: any, value: number | null) {
+          if (this.guestLimit === GuestLimit.CUSTOM) {
+            if (!value || value <= 1000) {
+              throw new Error(
+                "customGuestLimit must be > 1000 when guestLimit is CUSTOM"
+              );
+            }
+          }
+        },
+      },
+    },
+    customPhotoCapLimit: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      validate: {
+        min: 1,
+        isInt: true,
+        customIsRequiredWhenPhotoCustom(this: any, value: number | null) {
+          if (this.photoCapLimit === PhotoCapLimit.CUSTOM) {
+            if (!value || value <= 25) {
+              throw new Error(
+                "customPhotoCapLimit must be > 25 when photoCapLimit is CUSTOM"
+              );
+            }
+          }
         },
       },
     },
@@ -183,10 +238,9 @@ Event.init(
     },
     eventSlug: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
       unique: true,
       validate: {
-        notEmpty: true,
         len: [10, 50],
       },
     },
@@ -220,6 +274,24 @@ Event.init(
     isPasswordProtected: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
+    },
+    paymentStatus: {
+      type: DataTypes.ENUM("FREE", "PENDING", "PAID"),
+      allowNull: false,
+      defaultValue: "FREE",
+    },
+    planPrice: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    paystackReference: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      unique: true,
+    },
+    paidAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
     },
     createdAt: {
       type: DataTypes.DATE,

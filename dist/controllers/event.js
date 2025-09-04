@@ -49,7 +49,7 @@ const qrCodeGenerator_1 = require("../utils/qrCodeGenerator");
 // Create a new event
 const createEvent = async (req, res, next) => {
     try {
-        const { title, description, eventFlyer, guestLimit, photoCapLimit, eventDate, isPasswordProtected, customPassword, } = req.body;
+        const { title, description, eventFlyer, guestLimit, photoCapLimit, eventDate, isPasswordProtected, customPassword, customGuestLimit, customPhotoCapLimit, } = req.body;
         const userId = req.user?.id;
         if (!userId) {
             throw new badRequest_1.default("User authentication required");
@@ -60,10 +60,38 @@ const createEvent = async (req, res, next) => {
         }
         // Validate enums
         if (!Object.values(event_1.GuestLimit).includes(guestLimit)) {
-            throw new badRequest_1.default("Invalid guest limit. Must be one of: 10, 100, 250, 500, 800, 1000+");
+            throw new badRequest_1.default("Invalid guest limit. Must be one of: 10, 100, 250, 500, 800, 1000, CUSTOM");
         }
         if (!Object.values(event_1.PhotoCapLimit).includes(photoCapLimit)) {
-            throw new badRequest_1.default("Invalid photo capture limit. Must be one of: 5, 10, 15, 20, 25");
+            throw new badRequest_1.default("Invalid photo capture limit. Must be one of: 5, 10, 15, 20, 25, CUSTOM");
+        }
+        // Enforce allowed pairs when not CUSTOM
+        if (guestLimit !== event_1.GuestLimit.CUSTOM &&
+            photoCapLimit !== event_1.PhotoCapLimit.CUSTOM) {
+            const allowed = {
+                [event_1.GuestLimit.TEN]: event_1.PhotoCapLimit.FIVE,
+                [event_1.GuestLimit.ONE_HUNDRED]: event_1.PhotoCapLimit.TEN,
+                [event_1.GuestLimit.TWO_FIFTY]: event_1.PhotoCapLimit.FIFTEEN,
+                [event_1.GuestLimit.FIVE_HUNDRED]: event_1.PhotoCapLimit.TWENTY,
+                [event_1.GuestLimit.EIGHT_HUNDRED]: event_1.PhotoCapLimit.TWENTY_FIVE,
+                [event_1.GuestLimit.ONE_THOUSAND]: event_1.PhotoCapLimit.TWENTY_FIVE,
+            };
+            if (allowed[guestLimit] !== photoCapLimit) {
+                throw new badRequest_1.default("Invalid pairing. Allowed pairs: 10-5, 100-10, 250-15, 500-20, 800-25, 1000-25 or use CUSTOM.");
+            }
+        }
+        // Enforce custom values when CUSTOM is chosen
+        if (guestLimit === event_1.GuestLimit.CUSTOM) {
+            const num = Number(customGuestLimit);
+            if (!Number.isInteger(num) || num <= 1000) {
+                throw new badRequest_1.default("customGuestLimit must be an integer greater than 1000 when guestLimit is CUSTOM");
+            }
+        }
+        if (photoCapLimit === event_1.PhotoCapLimit.CUSTOM) {
+            const num = Number(customPhotoCapLimit);
+            if (!Number.isInteger(num) || num <= 25) {
+                throw new badRequest_1.default("customPhotoCapLimit must be an integer greater than 25 when photoCapLimit is CUSTOM");
+            }
         }
         // Validate event date if provided
         if (eventDate && new Date(eventDate) < new Date()) {
@@ -85,6 +113,10 @@ const createEvent = async (req, res, next) => {
             eventFlyer,
             guestLimit,
             photoCapLimit,
+            customGuestLimit: guestLimit === event_1.GuestLimit.CUSTOM ? Number(customGuestLimit) : null,
+            customPhotoCapLimit: photoCapLimit === event_1.PhotoCapLimit.CUSTOM
+                ? Number(customPhotoCapLimit)
+                : null,
             eventDate: eventDate ? new Date(eventDate) : undefined,
             eventSlug,
             qrCodeData,
@@ -213,7 +245,7 @@ exports.getEventById = getEventById;
 const updateEvent = async (req, res, next) => {
     try {
         const { id } = req.params;
-        const { title, description, eventFlyer, guestLimit, photoCapLimit, eventDate, isActive, } = req.body;
+        const { title, description, eventFlyer, guestLimit, photoCapLimit, eventDate, isActive, customGuestLimit, customPhotoCapLimit, } = req.body;
         const userId = req.user?.id;
         if (!userId) {
             throw new badRequest_1.default("User authentication required");
@@ -228,11 +260,41 @@ const updateEvent = async (req, res, next) => {
         }
         // Validate enums if provided
         if (guestLimit && !Object.values(event_1.GuestLimit).includes(guestLimit)) {
-            throw new badRequest_1.default("Invalid guest limit. Must be one of: 10, 100, 250, 500, 800, 1000+");
+            throw new badRequest_1.default("Invalid guest limit. Must be one of: 10, 100, 250, 500, 800, 1000, CUSTOM");
         }
         if (photoCapLimit &&
             !Object.values(event_1.PhotoCapLimit).includes(photoCapLimit)) {
-            throw new badRequest_1.default("Invalid photo capture limit. Must be one of: 5, 10, 15, 20, 25");
+            throw new badRequest_1.default("Invalid photo capture limit. Must be one of: 5, 10, 15, 20, 25, CUSTOM");
+        }
+        // Enforce allowed pairs on update when both provided and not CUSTOM
+        if (guestLimit &&
+            photoCapLimit &&
+            guestLimit !== event_1.GuestLimit.CUSTOM &&
+            photoCapLimit !== event_1.PhotoCapLimit.CUSTOM) {
+            const allowed = {
+                [event_1.GuestLimit.TEN]: event_1.PhotoCapLimit.FIVE,
+                [event_1.GuestLimit.ONE_HUNDRED]: event_1.PhotoCapLimit.TEN,
+                [event_1.GuestLimit.TWO_FIFTY]: event_1.PhotoCapLimit.FIFTEEN,
+                [event_1.GuestLimit.FIVE_HUNDRED]: event_1.PhotoCapLimit.TWENTY,
+                [event_1.GuestLimit.EIGHT_HUNDRED]: event_1.PhotoCapLimit.TWENTY_FIVE,
+                [event_1.GuestLimit.ONE_THOUSAND]: event_1.PhotoCapLimit.TWENTY_FIVE,
+            };
+            if (allowed[guestLimit] !== photoCapLimit) {
+                throw new badRequest_1.default("Invalid pairing. Allowed pairs: 10-5, 100-10, 250-15, 500-20, 800-25, 1000-25 or use CUSTOM.");
+            }
+        }
+        // If switching to CUSTOM, ensure custom values
+        if (guestLimit === event_1.GuestLimit.CUSTOM) {
+            const num = Number(customGuestLimit);
+            if (!Number.isInteger(num) || num <= 1000) {
+                throw new badRequest_1.default("customGuestLimit must be an integer greater than 1000 when guestLimit is CUSTOM");
+            }
+        }
+        if (photoCapLimit === event_1.PhotoCapLimit.CUSTOM) {
+            const num = Number(customPhotoCapLimit);
+            if (!Number.isInteger(num) || num <= 25) {
+                throw new badRequest_1.default("customPhotoCapLimit must be an integer greater than 25 when photoCapLimit is CUSTOM");
+            }
         }
         // Validate event date if provided
         if (eventDate && new Date(eventDate) < new Date()) {
@@ -245,6 +307,12 @@ const updateEvent = async (req, res, next) => {
             ...(eventFlyer !== undefined && { eventFlyer }),
             ...(guestLimit && { guestLimit }),
             ...(photoCapLimit && { photoCapLimit }),
+            ...(guestLimit === event_1.GuestLimit.CUSTOM && {
+                customGuestLimit: Number(customGuestLimit),
+            }),
+            ...(photoCapLimit === event_1.PhotoCapLimit.CUSTOM && {
+                customPhotoCapLimit: Number(customPhotoCapLimit),
+            }),
             ...(eventDate && { eventDate: new Date(eventDate) }),
             ...(isActive !== undefined && { isActive }),
         });

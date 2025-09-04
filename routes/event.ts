@@ -256,11 +256,11 @@ router.get(
       .withMessage("isActive must be a boolean"),
     query("guestLimit")
       .optional()
-      .isIn(["10", "100", "250", "500", "800", "1000+"])
+      .isIn(["10", "100", "250", "500", "800", "1000", "CUSTOM"])
       .withMessage("Invalid guest limit"),
     query("photoCapLimit")
       .optional()
-      .isIn(["5", "10", "15", "20", "25"])
+      .isIn(["5", "10", "15", "20", "25", "CUSTOM"])
       .withMessage("Invalid photo capture limit"),
     query("upcoming")
       .optional()
@@ -337,13 +337,62 @@ router.post(
     body("guestLimit")
       .notEmpty()
       .withMessage("Guest limit is required")
-      .isIn(["10", "100", "250", "500", "800", "1000+"])
-      .withMessage("Guest limit must be one of: 10, 100, 250, 500, 800, 1000+"),
+      .isIn(["10", "100", "250", "500", "800", "1000", "CUSTOM"])
+      .withMessage(
+        "Guest limit must be one of: 10, 100, 250, 500, 800, 1000, CUSTOM"
+      ),
     body("photoCapLimit")
       .notEmpty()
       .withMessage("Photo capture limit is required")
-      .isIn(["5", "10", "15", "20", "25"])
-      .withMessage("Photo capture limit must be one of: 5, 10, 15, 20, 25"),
+      .isIn(["5", "10", "15", "20", "25", "CUSTOM"])
+      .withMessage(
+        "Photo capture limit must be one of: 5, 10, 15, 20, 25, CUSTOM"
+      ),
+    body("customGuestLimit")
+      .optional({ nullable: true })
+      .custom((value, { req }) => {
+        if (req.body.guestLimit === "CUSTOM") {
+          const num = Number(value);
+          if (!Number.isInteger(num) || num <= 1000) {
+            throw new Error(
+              "customGuestLimit must be an integer greater than 1000 when guestLimit is CUSTOM"
+            );
+          }
+        }
+        return true;
+      }),
+    body("customPhotoCapLimit")
+      .optional({ nullable: true })
+      .custom((value, { req }) => {
+        if (req.body.photoCapLimit === "CUSTOM") {
+          const num = Number(value);
+          if (!Number.isInteger(num) || num <= 25) {
+            throw new Error(
+              "customPhotoCapLimit must be an integer greater than 25 when photoCapLimit is CUSTOM"
+            );
+          }
+        }
+        return true;
+      }),
+    // Enforce fixed pairs for create
+    body("photoCapLimit").custom((photoCap, { req }) => {
+      const guest = req.body.guestLimit;
+      if (guest === "CUSTOM" || photoCap === "CUSTOM") return true;
+      const allowed = {
+        "10": "5",
+        "100": "10",
+        "250": "15",
+        "500": "20",
+        "800": "25",
+        "1000": "25",
+      } as Record<string, string>;
+      if (allowed[guest] !== photoCap) {
+        throw new Error(
+          "Invalid pairing. Allowed pairs: 10-5, 100-10, 250-15, 500-20, 800-25, 1000-25 or use CUSTOM."
+        );
+      }
+      return true;
+    }),
     body("eventDate")
       .optional()
       .isISO8601()
@@ -407,12 +456,63 @@ router.put(
       .withMessage("Event flyer must be a valid URL"),
     body("guestLimit")
       .optional()
-      .isIn(["10", "100", "250", "500", "800", "1000+"])
-      .withMessage("Guest limit must be one of: 10, 100, 250, 500, 800, 1000+"),
+      .isIn(["10", "100", "250", "500", "800", "1000", "CUSTOM"])
+      .withMessage(
+        "Guest limit must be one of: 10, 100, 250, 500, 800, 1000, CUSTOM"
+      ),
     body("photoCapLimit")
       .optional()
-      .isIn(["5", "10", "15", "20", "25"])
-      .withMessage("Photo capture limit must be one of: 5, 10, 15, 20, 25"),
+      .isIn(["5", "10", "15", "20", "25", "CUSTOM"])
+      .withMessage(
+        "Photo capture limit must be one of: 5, 10, 15, 20, 25, CUSTOM"
+      ),
+    body("customGuestLimit")
+      .optional({ nullable: true })
+      .custom((value, { req }) => {
+        if (req.body.guestLimit === "CUSTOM") {
+          const num = Number(value);
+          if (!Number.isInteger(num) || num <= 1000) {
+            throw new Error(
+              "customGuestLimit must be an integer greater than 1000 when guestLimit is CUSTOM"
+            );
+          }
+        }
+        return true;
+      }),
+    body("customPhotoCapLimit")
+      .optional({ nullable: true })
+      .custom((value, { req }) => {
+        if (req.body.photoCapLimit === "CUSTOM") {
+          const num = Number(value);
+          if (!Number.isInteger(num) || num <= 25) {
+            throw new Error(
+              "customPhotoCapLimit must be an integer greater than 25 when photoCapLimit is CUSTOM"
+            );
+          }
+        }
+        return true;
+      }),
+    // Enforce fixed pairs for update
+    body("photoCapLimit")
+      .optional()
+      .custom((photoCap, { req }) => {
+        const guest = req.body.guestLimit ?? req.body.guestLimitNew;
+        if (guest === "CUSTOM" || photoCap === "CUSTOM" || !guest) return true;
+        const allowed = {
+          "10": "5",
+          "100": "10",
+          "250": "15",
+          "500": "20",
+          "800": "25",
+          "1000": "25",
+        } as Record<string, string>;
+        if (allowed[guest] !== photoCap) {
+          throw new Error(
+            "Invalid pairing. Allowed pairs: 10-5, 100-10, 250-15, 500-20, 800-25, 1000-25 or use CUSTOM."
+          );
+        }
+        return true;
+      }),
     body("eventDate")
       .optional()
       .isISO8601()

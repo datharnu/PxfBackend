@@ -93,13 +93,56 @@ const eventValidationRules = () => [
     (0, express_validator_1.body)("guestLimit")
         .notEmpty()
         .withMessage("Guest limit is required")
-        .isIn(["10", "100", "250", "500", "800", "1000+"])
-        .withMessage("Guest limit must be one of: 10, 100, 250, 500, 800, 1000+"),
+        .isIn(["10", "100", "250", "500", "800", "1000", "CUSTOM"])
+        .withMessage("Guest limit must be one of: 10, 100, 250, 500, 800, 1000, CUSTOM"),
     (0, express_validator_1.body)("photoCapLimit")
         .notEmpty()
         .withMessage("Photo capture limit is required")
-        .isIn(["5", "10", "15", "20", "25"])
-        .withMessage("Photo capture limit must be one of: 5, 10, 15, 20, 25"),
+        .isIn(["5", "10", "15", "20", "25", "CUSTOM"])
+        .withMessage("Photo capture limit must be one of: 5, 10, 15, 20, 25, CUSTOM"),
+    // When CUSTOM is selected, require valid custom values
+    (0, express_validator_1.body)("customGuestLimit").custom((value, { req }) => {
+        if (req.body.guestLimit === "CUSTOM") {
+            if (value === undefined || value === null) {
+                throw new Error("customGuestLimit is required when guestLimit is CUSTOM");
+            }
+            const num = Number(value);
+            if (!Number.isInteger(num) || num <= 1000) {
+                throw new Error("customGuestLimit must be an integer greater than 1000");
+            }
+        }
+        return true;
+    }),
+    (0, express_validator_1.body)("customPhotoCapLimit").custom((value, { req }) => {
+        if (req.body.photoCapLimit === "CUSTOM") {
+            if (value === undefined || value === null) {
+                throw new Error("customPhotoCapLimit is required when photoCapLimit is CUSTOM");
+            }
+            const num = Number(value);
+            if (!Number.isInteger(num) || num <= 25) {
+                throw new Error("customPhotoCapLimit must be an integer greater than 25");
+            }
+        }
+        return true;
+    }),
+    // Enforce fixed guest/photo pairings when not CUSTOM
+    (0, express_validator_1.body)("photoCapLimit").custom((photoCap, { req }) => {
+        const guest = req.body.guestLimit;
+        if (guest === "CUSTOM" || photoCap === "CUSTOM")
+            return true;
+        const allowed = {
+            "10": "5",
+            "100": "10",
+            "250": "15",
+            "500": "20",
+            "800": "25",
+            "1000": "25",
+        };
+        if (allowed[guest] !== photoCap) {
+            throw new Error("Invalid pairing. Allowed pairs: 10-5, 100-10, 250-15, 500-20, 800-25, 1000-25 or use CUSTOM.");
+        }
+        return true;
+    }),
     (0, express_validator_1.body)("eventDate")
         .optional()
         .isISO8601()

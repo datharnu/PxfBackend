@@ -16,6 +16,7 @@ import db from "./models";
 import authRouter from "./routes/auth";
 import eventRouter from "./routes/event";
 import mediaRouter from "./routes/media";
+import paymentRouter from "./routes/payment";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -53,6 +54,7 @@ app.get("/health", (req: Request, res: Response) => {
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/events", eventRouter);
 app.use("/api/v1/media", mediaRouter);
+app.use("/api/v1/payments", paymentRouter);
 
 // Error handling middleware (must be last)
 app.use(errorHandlerMiddleware);

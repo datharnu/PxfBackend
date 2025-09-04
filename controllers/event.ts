@@ -1,5 +1,9 @@
 import { Request, Response, NextFunction } from "express";
-import Event, { GuestLimit, PhotoCapLimit } from "../models/event";
+import Event, {
+  GuestLimit,
+  PhotoCapLimit,
+  PaymentStatus,
+} from "../models/event";
 import User from "../models/user";
 import EventMedia from "../models/eventMedia";
 import BadRequestError from "../errors/badRequest";
@@ -32,6 +36,8 @@ export const createEvent = async (
       eventDate,
       isPasswordProtected,
       customPassword,
+      customGuestLimit,
+      customPhotoCapLimit,
     } = req.body;
 
     const userId = req.user?.id;
@@ -49,14 +55,53 @@ export const createEvent = async (
     // Validate enums
     if (!Object.values(GuestLimit).includes(guestLimit)) {
       throw new BadRequestError(
-        "Invalid guest limit. Must be one of: 10, 100, 250, 500, 800, 1000+"
+        "Invalid guest limit. Must be one of: 10, 100, 250, 500, 800, 1000, CUSTOM"
       );
     }
 
     if (!Object.values(PhotoCapLimit).includes(photoCapLimit)) {
       throw new BadRequestError(
-        "Invalid photo capture limit. Must be one of: 5, 10, 15, 20, 25"
+        "Invalid photo capture limit. Must be one of: 5, 10, 15, 20, 25, CUSTOM"
       );
+    }
+
+    // Enforce allowed pairs when not CUSTOM
+    if (
+      guestLimit !== GuestLimit.CUSTOM &&
+      photoCapLimit !== PhotoCapLimit.CUSTOM
+    ) {
+      const allowed: Record<string, string> = {
+        [GuestLimit.TEN]: PhotoCapLimit.FIVE,
+        [GuestLimit.ONE_HUNDRED]: PhotoCapLimit.TEN,
+        [GuestLimit.TWO_FIFTY]: PhotoCapLimit.FIFTEEN,
+        [GuestLimit.FIVE_HUNDRED]: PhotoCapLimit.TWENTY,
+        [GuestLimit.EIGHT_HUNDRED]: PhotoCapLimit.TWENTY_FIVE,
+        [GuestLimit.ONE_THOUSAND]: PhotoCapLimit.TWENTY_FIVE,
+      };
+      if (allowed[guestLimit] !== photoCapLimit) {
+        throw new BadRequestError(
+          "Invalid pairing. Allowed pairs: 10-5, 100-10, 250-15, 500-20, 800-25, 1000-25 or use CUSTOM."
+        );
+      }
+    }
+
+    // Enforce custom values when CUSTOM is chosen
+    if (guestLimit === GuestLimit.CUSTOM) {
+      const num = Number(customGuestLimit);
+      if (!Number.isInteger(num) || num <= 1000) {
+        throw new BadRequestError(
+          "customGuestLimit must be an integer greater than 1000 when guestLimit is CUSTOM"
+        );
+      }
+    }
+
+    if (photoCapLimit === PhotoCapLimit.CUSTOM) {
+      const num = Number(customPhotoCapLimit);
+      if (!Number.isInteger(num) || num <= 25) {
+        throw new BadRequestError(
+          "customPhotoCapLimit must be an integer greater than 25 when photoCapLimit is CUSTOM"
+        );
+      }
     }
 
     // Validate event date if provided
@@ -64,9 +109,15 @@ export const createEvent = async (
       throw new BadRequestError("Event date must be in the future");
     }
 
-    // Generate unique event slug and QR code
-    const eventSlug = generateEventSlug();
-    const qrCodeData = await generateEventQRCode(eventSlug);
+    // Only generate slug/QR for free plan at creation time
+    let eventSlug: string | undefined;
+    let qrCodeData: string | undefined;
+    const isFreePlan =
+      guestLimit === GuestLimit.TEN && photoCapLimit === PhotoCapLimit.FIVE;
+    if (isFreePlan) {
+      eventSlug = generateEventSlug();
+      qrCodeData = await generateEventQRCode(eventSlug);
+    }
 
     // Handle password protection
     let accessPassword: string | undefined;
@@ -83,11 +134,22 @@ export const createEvent = async (
       eventFlyer,
       guestLimit,
       photoCapLimit,
+      paymentStatus: isFreePlan ? PaymentStatus.FREE : PaymentStatus.PENDING,
+      planPrice: isFreePlan ? 0 : null,
+      paidAt: isFreePlan ? new Date() : null,
+      customGuestLimit:
+        guestLimit === GuestLimit.CUSTOM ? Number(customGuestLimit) : null,
+      customPhotoCapLimit:
+        photoCapLimit === PhotoCapLimit.CUSTOM
+          ? Number(customPhotoCapLimit)
+          : null,
       eventDate: eventDate ? new Date(eventDate) : undefined,
       eventSlug,
       qrCodeData,
       accessPassword,
       isPasswordProtected: !!isPasswordProtected,
+      // Free plan: active immediately; Paid plan: inactive until payment
+      isActive: isFreePlan ? true : false,
       createdBy: userId,
     });
 
@@ -106,16 +168,19 @@ export const createEvent = async (
       success: true,
       message: "Event created successfully",
       event: createdEvent,
-      accessInfo: {
-        eventSlug,
-        accessUrl: getEventAccessUrl(eventSlug),
-        qrCodeData,
-        isPasswordProtected: !!isPasswordProtected,
-        ...(isPasswordProtected &&
-          plainPasswordForResponse && {
-            generatedPassword: plainPasswordForResponse,
-          }),
-      },
+      ...(isFreePlan &&
+        eventSlug && {
+          accessInfo: {
+            eventSlug,
+            accessUrl: getEventAccessUrl(eventSlug),
+            qrCodeData,
+            isPasswordProtected: !!isPasswordProtected,
+            ...(isPasswordProtected &&
+              plainPasswordForResponse && {
+                generatedPassword: plainPasswordForResponse,
+              }),
+          },
+        }),
     });
   } catch (error) {
     console.error("Create event error:", error);
@@ -250,6 +315,8 @@ export const updateEvent = async (
       photoCapLimit,
       eventDate,
       isActive,
+      customGuestLimit,
+      customPhotoCapLimit,
     } = req.body;
 
     const userId = req.user?.id;
@@ -270,7 +337,7 @@ export const updateEvent = async (
     // Validate enums if provided
     if (guestLimit && !Object.values(GuestLimit).includes(guestLimit)) {
       throw new BadRequestError(
-        "Invalid guest limit. Must be one of: 10, 100, 250, 500, 800, 1000+"
+        "Invalid guest limit. Must be one of: 10, 100, 250, 500, 800, 1000, CUSTOM"
       );
     }
 
@@ -279,8 +346,49 @@ export const updateEvent = async (
       !Object.values(PhotoCapLimit).includes(photoCapLimit)
     ) {
       throw new BadRequestError(
-        "Invalid photo capture limit. Must be one of: 5, 10, 15, 20, 25"
+        "Invalid photo capture limit. Must be one of: 5, 10, 15, 20, 25, CUSTOM"
       );
+    }
+
+    // Enforce allowed pairs on update when both provided and not CUSTOM
+    if (
+      guestLimit &&
+      photoCapLimit &&
+      guestLimit !== GuestLimit.CUSTOM &&
+      photoCapLimit !== PhotoCapLimit.CUSTOM
+    ) {
+      const allowed: Record<string, string> = {
+        [GuestLimit.TEN]: PhotoCapLimit.FIVE,
+        [GuestLimit.ONE_HUNDRED]: PhotoCapLimit.TEN,
+        [GuestLimit.TWO_FIFTY]: PhotoCapLimit.FIFTEEN,
+        [GuestLimit.FIVE_HUNDRED]: PhotoCapLimit.TWENTY,
+        [GuestLimit.EIGHT_HUNDRED]: PhotoCapLimit.TWENTY_FIVE,
+        [GuestLimit.ONE_THOUSAND]: PhotoCapLimit.TWENTY_FIVE,
+      };
+      if (allowed[guestLimit] !== photoCapLimit) {
+        throw new BadRequestError(
+          "Invalid pairing. Allowed pairs: 10-5, 100-10, 250-15, 500-20, 800-25, 1000-25 or use CUSTOM."
+        );
+      }
+    }
+
+    // If switching to CUSTOM, ensure custom values
+    if (guestLimit === GuestLimit.CUSTOM) {
+      const num = Number(customGuestLimit);
+      if (!Number.isInteger(num) || num <= 1000) {
+        throw new BadRequestError(
+          "customGuestLimit must be an integer greater than 1000 when guestLimit is CUSTOM"
+        );
+      }
+    }
+
+    if (photoCapLimit === PhotoCapLimit.CUSTOM) {
+      const num = Number(customPhotoCapLimit);
+      if (!Number.isInteger(num) || num <= 25) {
+        throw new BadRequestError(
+          "customPhotoCapLimit must be an integer greater than 25 when photoCapLimit is CUSTOM"
+        );
+      }
     }
 
     // Validate event date if provided
@@ -295,6 +403,12 @@ export const updateEvent = async (
       ...(eventFlyer !== undefined && { eventFlyer }),
       ...(guestLimit && { guestLimit }),
       ...(photoCapLimit && { photoCapLimit }),
+      ...(guestLimit === GuestLimit.CUSTOM && {
+        customGuestLimit: Number(customGuestLimit),
+      }),
+      ...(photoCapLimit === PhotoCapLimit.CUSTOM && {
+        customPhotoCapLimit: Number(customPhotoCapLimit),
+      }),
       ...(eventDate && { eventDate: new Date(eventDate) }),
       ...(isActive !== undefined && { isActive }),
     });
@@ -537,7 +651,9 @@ export const getEventBySlug = async (
       message: "Event accessed successfully",
       event: {
         ...eventData,
-        accessUrl: getEventAccessUrl(event.eventSlug),
+        ...(event.eventSlug && {
+          accessUrl: getEventAccessUrl(event.eventSlug),
+        }),
       },
     });
   } catch (error) {
