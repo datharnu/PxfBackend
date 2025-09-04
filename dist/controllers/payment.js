@@ -36,13 +36,14 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.verifyPayment = exports.initCustomPayment = exports.initPayment = void 0;
+exports.verifyPayment = exports.verifyPrecreatePayment = exports.initPrecreatePayment = exports.initCustomPayment = exports.initPayment = void 0;
 const http_status_codes_1 = require("http-status-codes");
 const event_1 = __importStar(require("../models/event"));
 const qrCodeGenerator_1 = require("../utils/qrCodeGenerator");
 const badRequest_1 = __importDefault(require("../errors/badRequest"));
 const notFound_1 = __importDefault(require("../errors/notFound"));
 const paystack_1 = require("../utils/paystack");
+const qrCodeGenerator_2 = require("../utils/qrCodeGenerator");
 function assertAllowedPair(guestLimit, photoCapLimit) {
     const allowed = {
         [event_1.GuestLimit.TEN]: event_1.PhotoCapLimit.FIVE,
@@ -169,6 +170,159 @@ const initCustomPayment = async (req, res, next) => {
     }
 };
 exports.initCustomPayment = initCustomPayment;
+// Initialize payment BEFORE creating a paid event (pre-create flow)
+const initPrecreatePayment = async (req, res, next) => {
+    try {
+        const userId = req.user?.id;
+        if (!userId) {
+            throw new badRequest_1.default("User authentication required");
+        }
+        const { title, description, eventFlyer, guestLimit, photoCapLimit, eventDate, isPasswordProtected, customPassword, customGuestLimit, customPhotoCapLimit, email, } = req.body;
+        if (!email)
+            throw new badRequest_1.default("email is required");
+        if (!title || !description || !guestLimit || !photoCapLimit) {
+            throw new badRequest_1.default("Title, description, guestLimit, and photoCapLimit are required");
+        }
+        if (!Object.values(event_1.GuestLimit).includes(guestLimit)) {
+            throw new badRequest_1.default("Invalid guestLimit");
+        }
+        if (!Object.values(event_1.PhotoCapLimit).includes(photoCapLimit)) {
+            throw new badRequest_1.default("Invalid photoCapLimit");
+        }
+        // Determine price
+        let priceNgn = 0;
+        if (guestLimit === event_1.GuestLimit.CUSTOM ||
+            photoCapLimit === event_1.PhotoCapLimit.CUSTOM) {
+            const numGuests = Number(customGuestLimit);
+            if (!Number.isInteger(numGuests) || numGuests <= 1000) {
+                throw new badRequest_1.default("customGuestLimit must be an integer greater than 1000 for CUSTOM");
+            }
+            priceNgn = await (0, paystack_1.getPriceForCustomGuests)(numGuests);
+        }
+        else {
+            assertAllowedPair(guestLimit, photoCapLimit);
+            priceNgn = await (0, paystack_1.getPriceForPlan)(guestLimit, photoCapLimit);
+        }
+        if (priceNgn <= 0) {
+            throw new badRequest_1.default("This plan appears to be free; use standard create flow");
+        }
+        const amountKobo = priceNgn * 100;
+        const metadata = {
+            mode: "precreate",
+            userId,
+            title,
+            description,
+            eventFlyer: eventFlyer ?? null,
+            guestLimit,
+            photoCapLimit,
+            customGuestLimit: guestLimit === event_1.GuestLimit.CUSTOM ? Number(customGuestLimit) : null,
+            customPhotoCapLimit: photoCapLimit === event_1.PhotoCapLimit.CUSTOM
+                ? Number(customPhotoCapLimit)
+                : null,
+            eventDate: eventDate ?? null,
+            isPasswordProtected: !!isPasswordProtected,
+            customPassword: customPassword ?? null,
+        };
+        const initRes = await (0, paystack_1.initTransaction)({
+            email,
+            amountKobo,
+            metadata,
+            callback_url: process.env.PAYSTACK_CALLBACK_URL || undefined,
+        });
+        if (!initRes.status || !initRes.data) {
+            throw new badRequest_1.default(initRes.message || "Unable to initialize pre-create transaction");
+        }
+        return res.status(http_status_codes_1.StatusCodes.OK).json({
+            success: true,
+            authorizationUrl: initRes.data.authorization_url,
+            reference: initRes.data.reference,
+        });
+    }
+    catch (error) {
+        next(error);
+    }
+};
+exports.initPrecreatePayment = initPrecreatePayment;
+// Verify pre-create payment and then create the event
+const verifyPrecreatePayment = async (req, res, next) => {
+    try {
+        const { reference } = req.params;
+        if (!reference)
+            throw new badRequest_1.default("reference is required");
+        const verifyRes = await (0, paystack_1.verifyTransaction)(reference);
+        if (!verifyRes.status || !verifyRes.data) {
+            throw new badRequest_1.default("Unable to verify transaction");
+        }
+        const data = verifyRes.data;
+        if (data.status !== "success") {
+            return res
+                .status(http_status_codes_1.StatusCodes.BAD_REQUEST)
+                .json({ success: false, message: "Transaction not successful" });
+        }
+        const md = (data.metadata || {});
+        if (md.mode !== "precreate") {
+            throw new badRequest_1.default("Invalid transaction mode for pre-create");
+        }
+        const userId = req.user?.id;
+        if (!userId || (md.userId && md.userId !== userId)) {
+            // Enforce that the verifying user is the payer/owner
+            throw new badRequest_1.default("User mismatch for event creation");
+        }
+        // Prepare password
+        let accessPassword = null;
+        let plainPasswordForResponse;
+        if (md.isPasswordProtected) {
+            plainPasswordForResponse =
+                md.customPassword || (0, qrCodeGenerator_2.generateEventPassword)(6);
+            accessPassword = await (0, qrCodeGenerator_2.hashEventPassword)(plainPasswordForResponse);
+        }
+        // Generate slug/QR at this point (paid event)
+        const slug = (0, qrCodeGenerator_1.generateEventSlug)();
+        const qr = await (0, qrCodeGenerator_1.generateEventQRCode)(slug);
+        const event = await event_1.default.create({
+            title: md.title,
+            description: md.description,
+            eventFlyer: md.eventFlyer ?? undefined,
+            guestLimit: md.guestLimit,
+            photoCapLimit: md.photoCapLimit,
+            customGuestLimit: md.guestLimit === event_1.GuestLimit.CUSTOM
+                ? Number(md.customGuestLimit)
+                : null,
+            customPhotoCapLimit: md.photoCapLimit === event_1.PhotoCapLimit.CUSTOM
+                ? Number(md.customPhotoCapLimit)
+                : null,
+            eventDate: md.eventDate ? new Date(md.eventDate) : undefined,
+            isPasswordProtected: !!md.isPasswordProtected,
+            accessPassword: accessPassword ?? undefined,
+            eventSlug: slug,
+            qrCodeData: qr,
+            paymentStatus: event_1.PaymentStatus.PAID,
+            planPrice: Math.round(Number(data.amount) / 100), // NGN
+            paidAt: new Date(),
+            isActive: true,
+            paystackReference: reference,
+            createdBy: userId,
+        });
+        return res.status(http_status_codes_1.StatusCodes.CREATED).json({
+            success: true,
+            message: "Event created after successful payment",
+            event,
+            accessInfo: {
+                eventSlug: slug,
+                accessUrl: (0, qrCodeGenerator_2.getEventAccessUrl)(slug),
+                qrCodeData: qr,
+                isPasswordProtected: !!md.isPasswordProtected,
+                ...(plainPasswordForResponse && {
+                    generatedPassword: plainPasswordForResponse,
+                }),
+            },
+        });
+    }
+    catch (error) {
+        next(error);
+    }
+};
+exports.verifyPrecreatePayment = verifyPrecreatePayment;
 const verifyPayment = async (req, res, next) => {
     try {
         const { reference } = req.params;

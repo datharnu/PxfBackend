@@ -10,4 +10,7 @@ const router = (0, express_1.Router)();
 router.post("/init", isAuthenticated_1.default, payment_1.initPayment);
 router.post("/init-custom", isAuthenticated_1.default, payment_1.initCustomPayment);
 router.get("/verify/:reference", isAuthenticated_1.default, payment_1.verifyPayment);
+// Pay-first flow for creating paid events
+router.post("/init-precreate", isAuthenticated_1.default, payment_1.initPrecreatePayment);
+router.get("/verify-precreate/:reference", isAuthenticated_1.default, payment_1.verifyPrecreatePayment);
 exports.default = router;
