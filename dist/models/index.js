@@ -7,7 +7,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sequelize = exports.EventMedia = exports.Event = exports.User = void 0;
+exports.sequelize = exports.CustomPricingTier = exports.PlanPricing = exports.EventMedia = exports.Event = exports.User = void 0;
 const path_1 = __importDefault(require("path"));
 const sequelize_1 = require("sequelize");
 const dotenv_1 = require("dotenv");
@@ -18,6 +18,10 @@ const event_1 = __importDefault(require("./event"));
 exports.Event = event_1.default;
 const eventMedia_1 = __importDefault(require("./eventMedia"));
 exports.EventMedia = eventMedia_1.default;
+const planPricing_1 = __importDefault(require("./planPricing"));
+exports.PlanPricing = planPricing_1.default;
+const customPricingTier_1 = __importDefault(require("./customPricingTier"));
+exports.CustomPricingTier = customPricingTier_1.default;
 (0, dotenv_1.config)(); // Load .env
 const basename = path_1.default.basename(__filename);
 const env = process.env.NODE_ENV || "development";
@@ -89,6 +93,8 @@ else {
 db.User = user_1.default;
 db.Event = event_1.default;
 db.EventMedia = eventMedia_1.default;
+db.PlanPricing = planPricing_1.default;
+db.CustomPricingTier = customPricingTier_1.default;
 // Apply associations
 Object.keys(db).forEach((modelName) => {
     if (db[modelName].associate) {

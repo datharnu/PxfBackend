@@ -9,7 +9,10 @@ exports.verifyTransaction = verifyTransaction;
 exports.verifyWebhookSignature = verifyWebhookSignature;
 exports.getPlanKey = getPlanKey;
 exports.getPriceForPlan = getPriceForPlan;
+exports.getPriceForCustomGuests = getPriceForCustomGuests;
 const axios_1 = __importDefault(require("axios"));
+const planPricing_1 = __importDefault(require("../models/planPricing"));
+const customPricingTier_1 = __importDefault(require("../models/customPricingTier"));
 const PAYSTACK_BASE_URL = "https://api.paystack.co";
 function getSecretKey() {
     const key = process.env.PAYSTACK_SECRET_KEY;
@@ -60,19 +63,39 @@ function verifyWebhookSignature(rawBody, signature) {
     return hash === signature;
 }
 // Pricing map for plans in Naira
-exports.PLAN_PRICING_NGN = {
-    // guest-photo pair keys
-    "10-5": 0,
-    "100-10": 7000,
-    "250-15": 12000,
-    "500-20": 18000,
-    "800-25": 23000,
-    "1000-25": 28000,
-};
+// Deprecated: Static map replaced by DB-backed pricing
+exports.PLAN_PRICING_NGN = {};
 function getPlanKey(guestLimit, photoCapLimit) {
     return `${guestLimit}-${photoCapLimit}`;
 }
-function getPriceForPlan(guestLimit, photoCapLimit) {
-    const key = getPlanKey(guestLimit, photoCapLimit);
-    return exports.PLAN_PRICING_NGN[key] ?? 0;
+async function getPriceForPlan(guestLimit, photoCapLimit) {
+    const row = await planPricing_1.default.findOne({
+        where: { guestLimit, photoCapLimit },
+    });
+    return row?.priceNgn ?? 0;
+}
+// Compute price for CUSTOM guest tiers (photo cap currently does not affect price)
+async function getPriceForCustomGuests(customGuestCount) {
+    if (!Number.isFinite(customGuestCount) || customGuestCount <= 1000) {
+        return 0;
+    }
+    const tier = await customPricingTier_1.default.findOne({
+        where: {
+            minGuests: { [require("sequelize").Op.lte]: customGuestCount },
+            // Either max is null (open-ended) or customGuestCount <= max
+        },
+        order: [["minGuests", "DESC"]],
+    });
+    if (!tier)
+        return 0;
+    if (tier.maxGuests == null) {
+        // For open-ended tier, apply increments: base 80,000 + 10,000 per additional 1000 above 6000
+        const base = tier.priceNgn;
+        const extra = Math.ceil((customGuestCount - 6000) / 1000);
+        return base + extra * 10000;
+    }
+    if (customGuestCount <= tier.maxGuests) {
+        return tier.priceNgn;
+    }
+    return 0;
 }

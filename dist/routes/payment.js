@@ -8,5 +8,6 @@ const payment_1 = require("../controllers/payment");
 const isAuthenticated_1 = __importDefault(require("../middlewares/isAuthenticated"));
 const router = (0, express_1.Router)();
 router.post("/init", isAuthenticated_1.default, payment_1.initPayment);
+router.post("/init-custom", isAuthenticated_1.default, payment_1.initCustomPayment);
 router.get("/verify/:reference", isAuthenticated_1.default, payment_1.verifyPayment);
 exports.default = router;

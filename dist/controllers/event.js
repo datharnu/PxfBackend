@@ -97,9 +97,14 @@ const createEvent = async (req, res, next) => {
         if (eventDate && new Date(eventDate) < new Date()) {
             throw new badRequest_1.default("Event date must be in the future");
         }
-        // Generate unique event slug and QR code
-        const eventSlug = (0, qrCodeGenerator_1.generateEventSlug)();
-        const qrCodeData = await (0, qrCodeGenerator_1.generateEventQRCode)(eventSlug);
+        // Only generate slug/QR for free plan at creation time
+        let eventSlug;
+        let qrCodeData;
+        const isFreePlan = guestLimit === event_1.GuestLimit.TEN && photoCapLimit === event_1.PhotoCapLimit.FIVE;
+        if (isFreePlan) {
+            eventSlug = (0, qrCodeGenerator_1.generateEventSlug)();
+            qrCodeData = await (0, qrCodeGenerator_1.generateEventQRCode)(eventSlug);
+        }
         // Handle password protection
         let accessPassword;
         let plainPasswordForResponse;
@@ -113,6 +118,9 @@ const createEvent = async (req, res, next) => {
             eventFlyer,
             guestLimit,
             photoCapLimit,
+            paymentStatus: isFreePlan ? event_1.PaymentStatus.FREE : event_1.PaymentStatus.PENDING,
+            planPrice: isFreePlan ? 0 : null,
+            paidAt: isFreePlan ? new Date() : null,
             customGuestLimit: guestLimit === event_1.GuestLimit.CUSTOM ? Number(customGuestLimit) : null,
             customPhotoCapLimit: photoCapLimit === event_1.PhotoCapLimit.CUSTOM
                 ? Number(customPhotoCapLimit)
@@ -122,6 +130,8 @@ const createEvent = async (req, res, next) => {
             qrCodeData,
             accessPassword,
             isPasswordProtected: !!isPasswordProtected,
+            // Free plan: active immediately; Paid plan: inactive until payment
+            isActive: isFreePlan ? true : false,
             createdBy: userId,
         });
         // Fetch the created event with creator details
@@ -138,16 +148,19 @@ const createEvent = async (req, res, next) => {
             success: true,
             message: "Event created successfully",
             event: createdEvent,
-            accessInfo: {
-                eventSlug,
-                accessUrl: (0, qrCodeGenerator_1.getEventAccessUrl)(eventSlug),
-                qrCodeData,
-                isPasswordProtected: !!isPasswordProtected,
-                ...(isPasswordProtected &&
-                    plainPasswordForResponse && {
-                    generatedPassword: plainPasswordForResponse,
-                }),
-            },
+            ...(isFreePlan &&
+                eventSlug && {
+                accessInfo: {
+                    eventSlug,
+                    accessUrl: (0, qrCodeGenerator_1.getEventAccessUrl)(eventSlug),
+                    qrCodeData,
+                    isPasswordProtected: !!isPasswordProtected,
+                    ...(isPasswordProtected &&
+                        plainPasswordForResponse && {
+                        generatedPassword: plainPasswordForResponse,
+                    }),
+                },
+            }),
         });
     }
     catch (error) {
@@ -519,7 +532,9 @@ const getEventBySlug = async (req, res, next) => {
             message: "Event accessed successfully",
             event: {
                 ...eventData,
-                accessUrl: (0, qrCodeGenerator_1.getEventAccessUrl)(event.eventSlug),
+                ...(event.eventSlug && {
+                    accessUrl: (0, qrCodeGenerator_1.getEventAccessUrl)(event.eventSlug),
+                }),
             },
         });
     }
