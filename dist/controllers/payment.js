@@ -36,9 +36,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.verifyPayment = exports.initPayment = void 0;
+exports.verifyPayment = exports.initCustomPayment = exports.initPayment = void 0;
 const http_status_codes_1 = require("http-status-codes");
 const event_1 = __importStar(require("../models/event"));
+const qrCodeGenerator_1 = require("../utils/qrCodeGenerator");
 const badRequest_1 = __importDefault(require("../errors/badRequest"));
 const notFound_1 = __importDefault(require("../errors/notFound"));
 const paystack_1 = require("../utils/paystack");
@@ -70,7 +71,7 @@ const initPayment = async (req, res, next) => {
         if (!event)
             throw new notFound_1.default("Event not found");
         // Calculate price
-        const priceNgn = (0, paystack_1.getPriceForPlan)(guestLimit, photoCapLimit);
+        const priceNgn = await (0, paystack_1.getPriceForPlan)(guestLimit, photoCapLimit);
         const amountKobo = priceNgn * 100;
         if (priceNgn === 0) {
             await event.update({
@@ -118,6 +119,56 @@ const initPayment = async (req, res, next) => {
     }
 };
 exports.initPayment = initPayment;
+const initCustomPayment = async (req, res, next) => {
+    try {
+        const { eventId, email } = req.body;
+        if (!eventId || !email) {
+            throw new badRequest_1.default("eventId and email are required");
+        }
+        const event = await event_1.default.findByPk(eventId);
+        if (!event)
+            throw new notFound_1.default("Event not found");
+        // Validate that event is using CUSTOM and has custom values
+        if (event.guestLimit !== event_1.GuestLimit.CUSTOM &&
+            event.photoCapLimit !== event_1.PhotoCapLimit.CUSTOM) {
+            throw new badRequest_1.default("This event is not using CUSTOM limits. Use standard init endpoint.");
+        }
+        const customGuests = event.customGuestLimit ?? 0;
+        if (!Number.isInteger(customGuests) || customGuests <= 1000) {
+            throw new badRequest_1.default("customGuestLimit must be > 1000 for custom pricing");
+        }
+        const priceNgn = await (0, paystack_1.getPriceForCustomGuests)(customGuests);
+        const amountKobo = priceNgn * 100;
+        const metadata = {
+            eventId: event.id,
+            plan: `CUSTOM-${customGuests}`,
+            userId: req.user?.id,
+        };
+        const initRes = await (0, paystack_1.initTransaction)({
+            email,
+            amountKobo,
+            metadata,
+            callback_url: process.env.PAYSTACK_CALLBACK_CUSTOM_URL || undefined,
+        });
+        if (!initRes.status || !initRes.data) {
+            throw new badRequest_1.default(initRes.message || "Unable to initialize transaction");
+        }
+        await event.update({
+            paymentStatus: event_1.PaymentStatus.PENDING,
+            planPrice: priceNgn,
+            paystackReference: initRes.data.reference,
+        });
+        return res.status(http_status_codes_1.StatusCodes.OK).json({
+            success: true,
+            authorizationUrl: initRes.data.authorization_url,
+            reference: initRes.data.reference,
+        });
+    }
+    catch (error) {
+        next(error);
+    }
+};
+exports.initCustomPayment = initCustomPayment;
 const verifyPayment = async (req, res, next) => {
     try {
         const { reference } = req.params;
@@ -133,10 +184,19 @@ const verifyPayment = async (req, res, next) => {
         if (!event)
             throw new notFound_1.default("Event for reference not found");
         if (verifyRes.data.status === "success") {
-            await event.update({
+            // Generate slug/QR if not yet set, activate event
+            let updates = {
                 paymentStatus: event_1.PaymentStatus.PAID,
                 paidAt: new Date(),
-            });
+                isActive: true,
+            };
+            if (!event.eventSlug) {
+                const slug = (0, qrCodeGenerator_1.generateEventSlug)();
+                const qr = await (0, qrCodeGenerator_1.generateEventQRCode)(slug);
+                updates.eventSlug = slug;
+                updates.qrCodeData = qr;
+            }
+            await event.update(updates);
         }
         return res
             .status(http_status_codes_1.StatusCodes.OK)

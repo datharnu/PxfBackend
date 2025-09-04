@@ -177,10 +177,9 @@ Event.init({
     },
     eventSlug: {
         type: sequelize_1.DataTypes.STRING,
-        allowNull: false,
+        allowNull: true,
         unique: true,
         validate: {
-            notEmpty: true,
             len: [10, 50],
         },
     },
