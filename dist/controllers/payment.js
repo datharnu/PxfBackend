@@ -270,13 +270,14 @@ const verifyPrecreatePayment = async (req, res, next) => {
             // Enforce that the verifying user is the payer/owner
             throw new badRequest_1.default("User mismatch for event creation");
         }
-        // Prepare password
+        // Prepare password (no auto-generation)
         let accessPassword = null;
-        let plainPasswordForResponse;
         if (md.isPasswordProtected) {
-            plainPasswordForResponse =
-                md.customPassword || (0, qrCodeGenerator_2.generateEventPassword)(6);
-            accessPassword = await (0, qrCodeGenerator_2.hashEventPassword)(plainPasswordForResponse);
+            const provided = typeof md.customPassword === "string" ? md.customPassword : "";
+            if (provided.trim().length < 4) {
+                throw new badRequest_1.default("customPassword is required and must be at least 4 characters when password protection is enabled");
+            }
+            accessPassword = await (0, qrCodeGenerator_2.hashEventPassword)(provided);
         }
         // Generate slug/QR at this point (paid event)
         const slug = (0, qrCodeGenerator_1.generateEventSlug)();
@@ -317,9 +318,6 @@ const verifyPrecreatePayment = async (req, res, next) => {
                 accessUrl: (0, qrCodeGenerator_2.getEventAccessUrl)(slug),
                 qrCodeData: qr,
                 isPasswordProtected: !!md.isPasswordProtected,
-                ...(plainPasswordForResponse && {
-                    generatedPassword: plainPasswordForResponse,
-                }),
             },
         });
     }
