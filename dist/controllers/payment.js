@@ -212,7 +212,9 @@ const initPrecreatePayment = async (req, res, next) => {
             userId,
             title,
             description,
-            eventFlyer: eventFlyer ?? null,
+            eventFlyer: typeof eventFlyer === "string" && eventFlyer.trim().length > 0
+                ? eventFlyer
+                : null,
             guestLimit,
             photoCapLimit,
             customGuestLimit: guestLimit === event_1.GuestLimit.CUSTOM ? Number(customGuestLimit) : null,
@@ -279,10 +281,13 @@ const verifyPrecreatePayment = async (req, res, next) => {
         // Generate slug/QR at this point (paid event)
         const slug = (0, qrCodeGenerator_1.generateEventSlug)();
         const qr = await (0, qrCodeGenerator_1.generateEventQRCode)(slug);
+        const sanitizedEventFlyer = typeof md.eventFlyer === "string" && md.eventFlyer.trim().length > 0
+            ? md.eventFlyer
+            : undefined;
         const event = await event_1.default.create({
             title: md.title,
             description: md.description,
-            eventFlyer: md.eventFlyer ?? undefined,
+            eventFlyer: sanitizedEventFlyer,
             guestLimit: md.guestLimit,
             photoCapLimit: md.photoCapLimit,
             customGuestLimit: md.guestLimit === event_1.GuestLimit.CUSTOM
