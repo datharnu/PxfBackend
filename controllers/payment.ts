@@ -263,6 +263,12 @@ export const initPrecreatePayment = async (
 
     const amountKobo = priceNgn * 100;
 
+    // Normalize boolean for password protection (handle "false" string)
+    const isProtected =
+      typeof isPasswordProtected === "boolean"
+        ? isPasswordProtected
+        : String(isPasswordProtected).toLowerCase() === "true";
+
     const metadata = {
       mode: "precreate",
       userId,
@@ -281,8 +287,12 @@ export const initPrecreatePayment = async (
           ? Number(customPhotoCapLimit)
           : null,
       eventDate: eventDate ?? null,
-      isPasswordProtected: !!isPasswordProtected,
-      customPassword: customPassword ?? null,
+      isPasswordProtected: isProtected,
+      customPassword: isProtected
+        ? typeof customPassword === "string"
+          ? customPassword
+          : null
+        : null,
     } as Record<string, unknown>;
 
     const initRes = await initTransaction({
@@ -343,7 +353,10 @@ export const verifyPrecreatePayment = async (
 
     // Prepare password (no auto-generation)
     let accessPassword: string | null = null;
-    if (md.isPasswordProtected) {
+    if (
+      md.isPasswordProtected === true ||
+      String(md.isPasswordProtected).toLowerCase() === "true"
+    ) {
       const provided =
         typeof md.customPassword === "string" ? md.customPassword : "";
       if (provided.trim().length < 4) {
@@ -378,7 +391,9 @@ export const verifyPrecreatePayment = async (
           ? Number(md.customPhotoCapLimit)
           : null,
       eventDate: md.eventDate ? new Date(md.eventDate as string) : undefined,
-      isPasswordProtected: !!md.isPasswordProtected,
+      isPasswordProtected:
+        md.isPasswordProtected === true ||
+        String(md.isPasswordProtected).toLowerCase() === "true",
       accessPassword: accessPassword ?? undefined,
       eventSlug: slug,
       qrCodeData: qr,
