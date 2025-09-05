@@ -105,12 +105,13 @@ const createEvent = async (req, res, next) => {
             eventSlug = (0, qrCodeGenerator_1.generateEventSlug)();
             qrCodeData = await (0, qrCodeGenerator_1.generateEventQRCode)(eventSlug);
         }
-        // Handle password protection
+        // Handle password protection (no auto-generation)
         let accessPassword;
-        let plainPasswordForResponse;
         if (isPasswordProtected) {
-            plainPasswordForResponse = customPassword || (0, qrCodeGenerator_1.generateEventPassword)(6);
-            accessPassword = await (0, qrCodeGenerator_1.hashEventPassword)(plainPasswordForResponse);
+            if (!customPassword || String(customPassword).trim().length < 4) {
+                throw new badRequest_1.default("customPassword is required and must be at least 4 characters when password protection is enabled");
+            }
+            accessPassword = await (0, qrCodeGenerator_1.hashEventPassword)(String(customPassword));
         }
         const event = await event_1.default.create({
             title,
@@ -155,10 +156,6 @@ const createEvent = async (req, res, next) => {
                     accessUrl: (0, qrCodeGenerator_1.getEventAccessUrl)(eventSlug),
                     qrCodeData,
                     isPasswordProtected: !!isPasswordProtected,
-                    ...(isPasswordProtected &&
-                        plainPasswordForResponse && {
-                        generatedPassword: plainPasswordForResponse,
-                    }),
                 },
             }),
         });

@@ -341,13 +341,17 @@ export const verifyPrecreatePayment = async (
       throw new BadRequestError("User mismatch for event creation");
     }
 
-    // Prepare password
+    // Prepare password (no auto-generation)
     let accessPassword: string | null = null;
-    let plainPasswordForResponse: string | undefined;
     if (md.isPasswordProtected) {
-      plainPasswordForResponse =
-        (md.customPassword as string) || generateEventPassword(6);
-      accessPassword = await hashEventPassword(plainPasswordForResponse);
+      const provided =
+        typeof md.customPassword === "string" ? md.customPassword : "";
+      if (provided.trim().length < 4) {
+        throw new BadRequestError(
+          "customPassword is required and must be at least 4 characters when password protection is enabled"
+        );
+      }
+      accessPassword = await hashEventPassword(provided);
     }
 
     // Generate slug/QR at this point (paid event)
@@ -395,9 +399,6 @@ export const verifyPrecreatePayment = async (
         accessUrl: getEventAccessUrl(slug),
         qrCodeData: qr,
         isPasswordProtected: !!md.isPasswordProtected,
-        ...(plainPasswordForResponse && {
-          generatedPassword: plainPasswordForResponse,
-        }),
       },
     });
   } catch (error) {
