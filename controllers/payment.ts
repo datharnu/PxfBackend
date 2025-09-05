@@ -341,6 +341,24 @@ export const verifyPrecreatePayment = async (
     }
 
     const md = (data.metadata || {}) as any;
+    // Debug: inspect metadata coming back from Paystack for this reference
+    try {
+      // Avoid crashing if circular; best-effort stringify
+      // eslint-disable-next-line no-console
+      console.log(
+        "[verify-precreate] reference:",
+        reference,
+        "metadata:",
+        JSON.stringify(md)
+      );
+    } catch (_) {
+      // eslint-disable-next-line no-console
+      console.log(
+        "[verify-precreate] reference:",
+        reference,
+        "metadata (non-serializable)"
+      );
+    }
     if (md.mode !== "precreate") {
       throw new BadRequestError("Invalid transaction mode for pre-create");
     }
@@ -353,18 +371,22 @@ export const verifyPrecreatePayment = async (
 
     // Prepare password (no auto-generation)
     let accessPassword: string | null = null;
-    if (
+    const isProtectedFlag =
       md.isPasswordProtected === true ||
-      String(md.isPasswordProtected).toLowerCase() === "true"
-    ) {
+      String(md.isPasswordProtected).toLowerCase() === "true";
+    if (isProtectedFlag) {
       const provided =
         typeof md.customPassword === "string" ? md.customPassword : "";
-      if (provided.trim().length < 4) {
-        throw new BadRequestError(
-          "customPassword is required and must be at least 4 characters when password protection is enabled"
+      if (provided.trim().length >= 4) {
+        accessPassword = await hashEventPassword(provided);
+      } else {
+        // If password protection is flagged but a valid password is missing/short,
+        // proceed without password instead of hard-failing the flow.
+        // eslint-disable-next-line no-console
+        console.warn(
+          "[verify-precreate] Password protection flagged but no valid customPassword provided; proceeding without password."
         );
       }
-      accessPassword = await hashEventPassword(provided);
     }
 
     // Generate slug/QR at this point (paid event)
@@ -391,9 +413,8 @@ export const verifyPrecreatePayment = async (
           ? Number(md.customPhotoCapLimit)
           : null,
       eventDate: md.eventDate ? new Date(md.eventDate as string) : undefined,
-      isPasswordProtected:
-        md.isPasswordProtected === true ||
-        String(md.isPasswordProtected).toLowerCase() === "true",
+      // Derive protection flag from whether we actually stored a password
+      isPasswordProtected: Boolean(accessPassword),
       accessPassword: accessPassword ?? undefined,
       eventSlug: slug,
       qrCodeData: qr,

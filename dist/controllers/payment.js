@@ -207,6 +207,10 @@ const initPrecreatePayment = async (req, res, next) => {
             throw new badRequest_1.default("This plan appears to be free; use standard create flow");
         }
         const amountKobo = priceNgn * 100;
+        // Normalize boolean for password protection (handle "false" string)
+        const isProtected = typeof isPasswordProtected === "boolean"
+            ? isPasswordProtected
+            : String(isPasswordProtected).toLowerCase() === "true";
         const metadata = {
             mode: "precreate",
             userId,
@@ -222,8 +226,12 @@ const initPrecreatePayment = async (req, res, next) => {
                 ? Number(customPhotoCapLimit)
                 : null,
             eventDate: eventDate ?? null,
-            isPasswordProtected: !!isPasswordProtected,
-            customPassword: customPassword ?? null,
+            isPasswordProtected: isProtected,
+            customPassword: isProtected
+                ? typeof customPassword === "string"
+                    ? customPassword
+                    : null
+                : null,
         };
         const initRes = await (0, paystack_1.initTransaction)({
             email,
@@ -262,6 +270,16 @@ const verifyPrecreatePayment = async (req, res, next) => {
                 .json({ success: false, message: "Transaction not successful" });
         }
         const md = (data.metadata || {});
+        // Debug: inspect metadata coming back from Paystack for this reference
+        try {
+            // Avoid crashing if circular; best-effort stringify
+            // eslint-disable-next-line no-console
+            console.log("[verify-precreate] reference:", reference, "metadata:", JSON.stringify(md));
+        }
+        catch (_) {
+            // eslint-disable-next-line no-console
+            console.log("[verify-precreate] reference:", reference, "metadata (non-serializable)");
+        }
         if (md.mode !== "precreate") {
             throw new badRequest_1.default("Invalid transaction mode for pre-create");
         }
@@ -272,12 +290,19 @@ const verifyPrecreatePayment = async (req, res, next) => {
         }
         // Prepare password (no auto-generation)
         let accessPassword = null;
-        if (md.isPasswordProtected) {
+        const isProtectedFlag = md.isPasswordProtected === true ||
+            String(md.isPasswordProtected).toLowerCase() === "true";
+        if (isProtectedFlag) {
             const provided = typeof md.customPassword === "string" ? md.customPassword : "";
-            if (provided.trim().length < 4) {
-                throw new badRequest_1.default("customPassword is required and must be at least 4 characters when password protection is enabled");
+            if (provided.trim().length >= 4) {
+                accessPassword = await (0, qrCodeGenerator_2.hashEventPassword)(provided);
             }
-            accessPassword = await (0, qrCodeGenerator_2.hashEventPassword)(provided);
+            else {
+                // If password protection is flagged but a valid password is missing/short,
+                // proceed without password instead of hard-failing the flow.
+                // eslint-disable-next-line no-console
+                console.warn("[verify-precreate] Password protection flagged but no valid customPassword provided; proceeding without password.");
+            }
         }
         // Generate slug/QR at this point (paid event)
         const slug = (0, qrCodeGenerator_1.generateEventSlug)();
@@ -298,7 +323,8 @@ const verifyPrecreatePayment = async (req, res, next) => {
                 ? Number(md.customPhotoCapLimit)
                 : null,
             eventDate: md.eventDate ? new Date(md.eventDate) : undefined,
-            isPasswordProtected: !!md.isPasswordProtected,
+            // Derive protection flag from whether we actually stored a password
+            isPasswordProtected: Boolean(accessPassword),
             accessPassword: accessPassword ?? undefined,
             eventSlug: slug,
             qrCodeData: qr,
