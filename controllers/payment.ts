@@ -268,7 +268,10 @@ export const initPrecreatePayment = async (
       userId,
       title,
       description,
-      eventFlyer: eventFlyer ?? null,
+      eventFlyer:
+        typeof eventFlyer === "string" && eventFlyer.trim().length > 0
+          ? eventFlyer
+          : null,
       guestLimit,
       photoCapLimit,
       customGuestLimit:
@@ -351,10 +354,15 @@ export const verifyPrecreatePayment = async (
     const slug = generateEventSlug();
     const qr = await generateEventQRCode(slug);
 
+    const sanitizedEventFlyer =
+      typeof md.eventFlyer === "string" && md.eventFlyer.trim().length > 0
+        ? (md.eventFlyer as string)
+        : undefined;
+
     const event = await Event.create({
       title: md.title,
       description: md.description,
-      eventFlyer: md.eventFlyer ?? undefined,
+      eventFlyer: sanitizedEventFlyer,
       guestLimit: md.guestLimit,
       photoCapLimit: md.photoCapLimit,
       customGuestLimit:
