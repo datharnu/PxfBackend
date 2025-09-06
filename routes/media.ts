@@ -7,6 +7,8 @@ import {
   getEventMedia,
   getUserEventUploads,
   getEventUploadStats,
+  getEventParticipantsWithUploads,
+  getEventUserUploads,
   deleteUserMedia,
   getEventMediaBySlug,
   uploadMiddleware,
@@ -121,6 +123,47 @@ router.get(
   [param("eventId").isUUID().withMessage("Event ID must be a valid UUID")],
   validate,
   getEventUploadStats
+);
+
+// List participants with their uploads for an event
+router.get(
+  "/event/:eventId/participants",
+  [
+    param("eventId").isUUID().withMessage("Event ID must be a valid UUID"),
+    query("page")
+      .optional()
+      .isInt({ min: 1 })
+      .withMessage("Page must be a positive integer"),
+    query("limit")
+      .optional()
+      .isInt({ min: 1, max: 100 })
+      .withMessage("Limit must be between 1 and 100"),
+  ],
+  validate,
+  getEventParticipantsWithUploads
+);
+
+// Get all uploads for a specific user in an event
+router.get(
+  "/event/:eventId/user/:userId",
+  [
+    param("eventId").isUUID().withMessage("Event ID must be a valid UUID"),
+    param("userId").isUUID().withMessage("User ID must be a valid UUID"),
+    query("page")
+      .optional()
+      .isInt({ min: 1 })
+      .withMessage("Page must be a positive integer"),
+    query("limit")
+      .optional()
+      .isInt({ min: 1, max: 100 })
+      .withMessage("Limit must be between 1 and 100"),
+    query("mediaType")
+      .optional()
+      .isIn(["image", "video"])
+      .withMessage("Media type must be either 'image' or 'video'"),
+  ],
+  validate,
+  getEventUserUploads
 );
 
 // Delete user's media upload

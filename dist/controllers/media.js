@@ -36,7 +36,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.uploadMiddleware = exports.getEventMediaBySlug = exports.deleteUserMedia = exports.getEventUploadStats = exports.getUserEventUploads = exports.getEventMedia = exports.getCloudinarySignature = exports.submitCloudinaryMedia = void 0;
+exports.uploadMiddleware = exports.getEventMediaBySlug = exports.deleteUserMedia = exports.getEventUserUploads = exports.getEventParticipantsWithUploads = exports.getEventUploadStats = exports.getUserEventUploads = exports.getEventMedia = exports.getCloudinarySignature = exports.submitCloudinaryMedia = void 0;
 const http_status_codes_1 = require("http-status-codes");
 const cloudinary_1 = require("cloudinary");
 const event_1 = __importDefault(require("../models/event"));
@@ -448,6 +448,169 @@ const getEventUploadStats = async (req, res, next) => {
     }
 };
 exports.getEventUploadStats = getEventUploadStats;
+// List all participants for an event with their uploads
+const getEventParticipantsWithUploads = async (req, res, next) => {
+    try {
+        const { eventId } = req.params;
+        const { page = 1, limit = 20 } = req.query;
+        const pageNum = parseInt(page, 10);
+        const limitNum = parseInt(limit, 10);
+        const offset = (pageNum - 1) * limitNum;
+        // Ensure event exists
+        const event = await event_1.default.findByPk(eventId);
+        if (!event) {
+            throw new notFound_1.default("Event not found");
+        }
+        // Find distinct uploaders for the event with counts
+        const participants = await eventMedia_1.default.findAll({
+            where: { eventId, isActive: true },
+            attributes: [
+                "uploadedBy",
+                [
+                    eventMedia_1.default.sequelize.fn("COUNT", eventMedia_1.default.sequelize.col("id")),
+                    "uploadCount",
+                ],
+            ],
+            include: [
+                {
+                    model: user_1.default,
+                    as: "uploader",
+                    attributes: ["id", "fullname", "email"],
+                },
+            ],
+            group: [
+                "uploadedBy",
+                "uploader.id",
+                "uploader.fullname",
+                "uploader.email",
+            ],
+            order: [
+                [
+                    eventMedia_1.default.sequelize.fn("COUNT", eventMedia_1.default.sequelize.col("id")),
+                    "DESC",
+                ],
+            ],
+            offset,
+            limit: limitNum,
+            raw: true,
+            nest: true,
+        });
+        // Total unique participants for pagination
+        const totalParticipants = await eventMedia_1.default.count({
+            where: { eventId, isActive: true },
+            distinct: true,
+            col: "uploadedBy",
+        });
+        // For each participant, fetch a few recent uploads (thumbnails)
+        const participantIds = participants.map((p) => p.uploadedBy);
+        const recentUploads = await eventMedia_1.default.findAll({
+            where: {
+                eventId,
+                isActive: true,
+                uploadedBy: participantIds.length ? participantIds : undefined,
+            },
+            include: [
+                {
+                    model: user_1.default,
+                    as: "uploader",
+                    attributes: ["id"],
+                },
+            ],
+            order: [["createdAt", "DESC"]],
+            limit: limitNum * 3, // up to three per participant on average
+        });
+        const uploadsByUser = {};
+        for (const media of recentUploads) {
+            const key = media.uploadedBy;
+            if (!uploadsByUser[key])
+                uploadsByUser[key] = [];
+            if (uploadsByUser[key].length < 3) {
+                uploadsByUser[key].push({
+                    id: media.id,
+                    mediaType: media.mediaType,
+                    mediaUrl: media.mediaUrl,
+                    createdAt: media.createdAt,
+                });
+            }
+        }
+        const data = participants.map((p) => ({
+            user: p.uploader,
+            uploadedBy: p.uploadedBy,
+            uploadCount: Number(p.uploadCount || 0),
+            recentUploads: uploadsByUser[p.uploadedBy] || [],
+        }));
+        return res.status(http_status_codes_1.StatusCodes.OK).json({
+            success: true,
+            message: "Participants with uploads retrieved successfully",
+            participants: data,
+            pagination: {
+                page: pageNum,
+                limit: limitNum,
+                total: totalParticipants,
+                totalPages: Math.ceil(totalParticipants / limitNum),
+            },
+            eventInfo: { id: event.id, title: event.title },
+        });
+    }
+    catch (error) {
+        console.error("Get event participants error:", error);
+        next(error);
+    }
+};
+exports.getEventParticipantsWithUploads = getEventParticipantsWithUploads;
+// Get all uploads for a specific user in an event
+const getEventUserUploads = async (req, res, next) => {
+    try {
+        const { eventId, userId } = req.params;
+        const { page = 1, limit = 20, mediaType } = req.query;
+        const pageNum = parseInt(page, 10);
+        const limitNum = parseInt(limit, 10);
+        const offset = (pageNum - 1) * limitNum;
+        // Ensure event exists
+        const event = await event_1.default.findByPk(eventId);
+        if (!event) {
+            throw new notFound_1.default("Event not found");
+        }
+        // Ensure user exists
+        const uploader = await user_1.default.findByPk(userId);
+        if (!uploader) {
+            throw new notFound_1.default("User not found");
+        }
+        const whereClause = { eventId, uploadedBy: userId, isActive: true };
+        if (mediaType &&
+            Object.values(eventMedia_1.MediaType).includes(mediaType)) {
+            whereClause.mediaType = mediaType;
+        }
+        const { count, rows } = await eventMedia_1.default.findAndCountAll({
+            where: whereClause,
+            order: [["createdAt", "DESC"]],
+            limit: limitNum,
+            offset,
+        });
+        return res.status(http_status_codes_1.StatusCodes.OK).json({
+            success: true,
+            message: "User uploads retrieved successfully",
+            uploads: rows,
+            user: {
+                id: uploader.id,
+                fullname: uploader.fullname,
+                email: uploader.email,
+            },
+            pagination: {
+                page: pageNum,
+                limit: limitNum,
+                total: count,
+                totalPages: Math.ceil(count / limitNum),
+            },
+            eventInfo: { id: event.id, title: event.title },
+        });
+    }
+    catch (error) {
+        console.error("Get event user uploads error:", error);
+        next(error);
+    }
+};
+exports.getEventUserUploads = getEventUserUploads;
 // Delete user's media upload
 const deleteUserMedia = async (req, res, next) => {
     try {

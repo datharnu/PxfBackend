@@ -31,7 +31,323 @@ interface EmailOptions {
   html: string;
 }
 
-// services/emailService.ts - Your email template functions
+// services/emailService.ts - This is the one for rentville
+// export const sendWelcomeMessage = ({
+//   sender,
+//   recipient,
+//   user,
+// }: EmailParams) => {
+//   return sendEmail({
+//     from: sender,
+//     to: recipient,
+//     subject:
+//       "🏡 Welcome to Rentville + RConnect - Your Complete Housing Solution",
+//     html: `<!DOCTYPE html>
+//   <html lang="en">
+//   <head>
+//     <meta charset="UTF-8">
+//     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+//     <title>Welcome to Rentville</title>
+//     <style type="text/css">
+//       /* Client-specific resets */
+//       body, p, h1, h2, h3 {
+//         margin: 0;
+//         padding: 0;
+//       }
+
+//       /* Base styles */
+//       body {
+//         font-family: 'Inter', Arial, sans-serif;
+//         background-color: #F5F5F5;
+//         color: #333333;
+//         line-height: 1.4;
+//       }
+
+//       /* Email container */
+//       .email-container {
+//         max-width: 600px;
+//         margin: 0 auto;
+//         background: #ffffff;
+//         border-radius: 0 !important; /* Gmail ignores border-radius */
+//       }
+
+//       /* Header */
+//       .header {
+//         background: #134F2C;
+//         padding: 30px 20px;
+//         text-align: center;
+//       }
+
+//       .logo-container {
+//         margin-bottom: 15px;
+//       }
+
+//       .logo {
+//         height: 40px;
+//         width: auto;
+//         max-width: 180px;
+//       }
+
+//       /* Platform tabs */
+//       .platform-tabs {
+//         display: inline-block;
+//         margin-top: 15px;
+//         background: rgba(255,255,255,0.2);
+//         border-radius: 20px;
+//         padding: 4px;
+//         space-between: 4px;
+//         gap: 5px;
+//       }
+
+//       .platform-tab {
+//         display: inline-block;
+//         padding: 6px 16px;
+//         border-radius: 16px;
+//         font-weight: 600;
+//         font-size: 13px;
+//         line-height: 1.3;
+//       }
+
+//       .rentville-tab {
+//         background: white;
+//         color: #134F2C;
+//       }
+
+//       .rconnect-tab {
+//         background: #D6DF24;
+//         color: #333333;
+//       }
+
+//       /* Content */
+//       .content {
+//         padding: 30px 20px;
+//       }
+
+//       .welcome-text {
+//         font-size: 16px;
+//         text-align: center;
+//         margin-bottom: 25px;
+//         line-height: 1.5;
+//       }
+
+//       /* Platform cards */
+//       .platform-cards {
+//         display: block;
+//         width: 100%;
+//         margin: 25px 0;
+//       }
+
+//       .platform-card {
+//         width: 100% !important;
+//         margin-bottom: 15px;
+//         border-radius: 8px;
+//         padding: 20px;
+//         box-sizing: border-box;
+//       }
+
+//       .rentville-card {
+//         background: rgba(19, 79, 44, 0.05);
+//         border: 1px solid rgba(19, 79, 44, 0.15);
+//       }
+
+//       .rconnect-card {
+//         background: rgba(214, 223, 36, 0.1);
+//         border: 1px solid rgba(214, 223, 36, 0.2);
+//       }
+
+//       .platform-icon {
+//         font-size: 32px;
+//         margin-bottom: 12px;
+//         text-align: center;
+//       }
+
+//       .platform-title {
+//         font-size: 17px;
+//         font-weight: 700;
+//         margin-bottom: 8px;
+//         text-align: center;
+//       }
+
+//       .rentville-title {
+//         color: #134F2C;
+//       }
+
+//       .rconnect-title {
+//         color: #333333;
+//       }
+
+//       .platform-description {
+//         font-size: 14px;
+//         margin-bottom: 16px;
+//         text-align: center;
+//         line-height: 1.5;
+//       }
+
+//       .platform-cta-container {
+//         text-align: center;
+//       }
+
+//       .platform-cta {
+//         display: inline-block;
+//         padding: 10px 20px;
+//         border-radius: 4px;
+//         font-weight: 600;
+//         font-size: 14px;
+//         text-decoration: none;
+//         text-align: center;
+//       }
+
+//       .rentville-cta {
+//         background: #134F2C;
+//         color: white;
+//       }
+
+//       .rconnect-cta {
+//         background: #D6DF24;
+//         color: #333333;
+//       }
+
+//       /* Main CTA */
+//       .main-cta-container {
+//         text-align: center;
+//         margin: 30px 0;
+//       }
+
+//       .main-cta {
+//         display: inline-block;
+//         background: #134F2C;
+//         color: white !important;
+//         text-decoration: none;
+//         padding: 14px 28px;
+//         border-radius: 4px;
+//         font-weight: 600;
+//         font-size: 16px;
+//       }
+
+//       /* Footer */
+//       .footer {
+//         text-align: center;
+//         padding: 20px;
+//         font-size: 14px;
+//         color: #718096;
+//       }
+
+//       /* Media queries for desktop */
+//       @media screen and (min-width: 480px) {
+//         .platform-cards {
+//           display: flex;
+//           gap: 15px;
+//         }
+
+//         .platform-card {
+//           width: 50% !important;
+//           margin-bottom: 0;
+//         }
+
+//         .header {
+//           padding: 40px 20px;
+//         }
+
+//         .logo {
+//           height: 50px;
+//           max-width: 200px;
+//         }
+//       }
+
+//       /* Outlook-specific fixes */
+//       .ExternalClass, .ExternalClass p, .ExternalClass span,
+//       .ExternalClass font, .ExternalClass td, .ExternalClass div {
+//         line-height: 100%;
+//       }
+//     </style>
+//   </head>
+//   <body style="margin: 0; padding: 0;">
+//     <!--[if mso]>
+//     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+//     <tr>
+//     <td style="padding: 20px;">
+//     <![endif]-->
+
+//     <div class="email-container">
+//       <div class="header">
+//         // <div class="logo-container">
+//         //   <img src="https://res.cloudinary.com/dryotb3zj/image/upload/v1749375993/v1ydcvsx126betr6piha.svg" alt="Rentville Logo" class="logo" style="height: 40px; max-width: 180px;">
+//         // </div>
+
+//         <div class="platform-tabs">
+//           <span class="platform-tab rentville-tab">PXF</span>
+//           // <span class="platform-tab rconnect-tab">RConnect</span>
+//         </div>
+//       </div>
+
+//       <div class="content">
+//         <p class="welcome-text" style="font-size: 16px; text-align: center; margin-bottom: 25px; line-height: 1.5;">
+//           Welcome to our complete housing ecosystem, ${user}! Whether you need a property or roommate, we've got you covered.
+//         </p>
+
+//         <div class="platform-cards" style="display: block; width: 100%; margin: 25px 0;">
+//           <!--[if mso]>
+//           <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+//           <tr>
+//           <td width="50%" valign="top" style="padding: 0 7.5px 15px 0;">
+//           <![endif]-->
+//           <div class="platform-card rentville-card" style="width: 100% !important; margin-bottom: 15px; border-radius: 8px; padding: 20px; box-sizing: border-box; background: rgba(19, 79, 44, 0.05); border: 1px solid rgba(19, 79, 44, 0.15);">
+//             <div class="platform-icon" style="font-size: 32px; margin-bottom: 12px; text-align: center;">🏠</div>
+//             <h3 class="platform-title rentville-title" style="font-size: 17px; font-weight: 700; margin-bottom: 8px; text-align: center; color: #134F2C;">Rentville Properties</h3>
+//             <p class="platform-description" style="font-size: 14px; margin-bottom: 16px; text-align: center; line-height: 1.5;">
+//               Discover verified rental listings from trusted landlords across Nigeria. No scams, no hidden fees - just quality homes.
+//             </p>
+//             <div class="platform-cta-container" style="text-align: center;">
+//               <a href="https://www.rentville.ng/properties" class="platform-cta rentville-cta" style="display: inline-block; padding: 10px 20px; border-radius: 4px; font-weight: 600; font-size: 14px; text-decoration: none; text-align: center; background: #134F2C; color: white;">Browse Listings</a>
+//             </div>
+//           </div>
+//           <!--[if mso]>
+//           </td>
+//           <td width="50%" valign="top" style="padding: 0 0 15px 7.5px;">
+//           <![endif]-->
+//           <div class="platform-card rconnect-card" style="width: 100% !important; margin-bottom: 15px; border-radius: 8px; padding: 20px; box-sizing: border-box; background: rgba(214, 223, 36, 0.1); border: 1px solid rgba(214, 223, 36, 0.2);">
+//             <div class="platform-icon" style="font-size: 32px; margin-bottom: 12px; text-align: center;">👥</div>
+//             <h3 class="platform-title rconnect-title" style="font-size: 17px; font-weight: 700; margin-bottom: 8px; text-align: center; color: #333333;">RConnect Matching</h3>
+//             <p class="platform-description" style="font-size: 14px; margin-bottom: 16px; text-align: center; line-height: 1.5;">
+//               Find compatible roommates or fill vacant rooms without agent fees. Perfect for students and young professionals.
+//             </p>
+//             <div class="platform-cta-container" style="text-align: center;">
+//               <a href="https://rconnect.rentville.ng/roommates" class="platform-cta rconnect-cta" style="display: inline-block; padding: 10px 20px; border-radius: 4px; font-weight: 600; font-size: 14px; text-decoration: none; text-align: center; background: #D6DF24; color: #333333;">Match Now</a>
+//             </div>
+//           </div>
+//           <!--[if mso]>
+//           </td>
+//           </tr>
+//           </table>
+//           <![endif]-->
+//         </div>
+
+//         <div class="main-cta-container" style="text-align: center; margin: 30px 0;">
+//           <a href="${
+//             process.env.DOMAIN_URL || "https://rconnect.rentville.ng"
+//           }/dashboard" class="main-cta" style="display: inline-block; background: #134F2C; color: white !important; text-decoration: none; padding: 14px 28px; border-radius: 4px; font-weight: 600; font-size: 16px;">Get Started Now</a>
+//         </div>
+
+//         <p style="text-align: center; font-size: 14px; color: #718096; margin-top: 30px;">
+//           Need help? Contact us at <a href="mailto:${
+//             process.env.SUPPORT_EMAIL || "rentvilleinfo@gmail.com"
+//           }" style="color: #134F2C; text-decoration: none;">${
+//       process.env.SUPPORT_EMAIL || "rentvilleinfo@gmail.com"
+//     }</a>
+//         </p>
+//       </div>
+//     </div>
+
+//     <!--[if mso]>
+//     </td>
+//     </tr>
+//     </table>
+//     <![endif]-->
+//   </body>
+//   </html>`,
+//   });
+// };
+
 export const sendWelcomeMessage = ({
   sender,
   recipient,
@@ -40,313 +356,145 @@ export const sendWelcomeMessage = ({
   return sendEmail({
     from: sender,
     to: recipient,
-    subject:
-      "🏡 Welcome to Rentville + RConnect - Your Complete Housing Solution",
+    subject: "🎉 Welcome to PXF – Capture Every Moment Effortlessly",
     html: `<!DOCTYPE html>
-  <html lang="en">
-  <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Welcome to Rentville</title>
-    <style type="text/css">
-      /* Client-specific resets */
-      body, p, h1, h2, h3 {
-        margin: 0;
-        padding: 0;
-      }
-      
-      /* Base styles */
-      body {
-        font-family: 'Inter', Arial, sans-serif;
-        background-color: #F5F5F5;
-        color: #333333;
-        line-height: 1.4;
-      }
-      
-      /* Email container */
-      .email-container {
-        max-width: 600px;
-        margin: 0 auto;
-        background: #ffffff;
-        border-radius: 0 !important; /* Gmail ignores border-radius */
-      }
-      
-      /* Header */
-      .header {
-        background: #134F2C;
-        padding: 30px 20px;
-        text-align: center;
-      }
-      
-      .logo-container {
-        margin-bottom: 15px;
-      }
-      
-      .logo {
-        height: 40px;
-        width: auto;
-        max-width: 180px;
-      }
-      
-      /* Platform tabs */
-      .platform-tabs {
-        display: inline-block;
-        margin-top: 15px;
-        background: rgba(255,255,255,0.2);
-        border-radius: 20px;
-        padding: 4px;
-        space-between: 4px;
-        gap: 5px;
-      }
-      
-      .platform-tab {
-        display: inline-block;
-        padding: 6px 16px;
-        border-radius: 16px;
-        font-weight: 600;
-        font-size: 13px;
-        line-height: 1.3;
-      }
-      
-      .rentville-tab {
-        background: white;
-        color: #134F2C;
-      }
-      
-      .rconnect-tab {
-        background: #D6DF24;
-        color: #333333;
-      }
-      
-      /* Content */
-      .content {
-        padding: 30px 20px;
-      }
-      
-      .welcome-text {
-        font-size: 16px;
-        text-align: center;
-        margin-bottom: 25px;
-        line-height: 1.5;
-      }
-      
-      /* Platform cards */
-      .platform-cards {
-        display: block;
-        width: 100%;
-        margin: 25px 0;
-      }
-      
-      .platform-card {
-        width: 100% !important;
-        margin-bottom: 15px;
-        border-radius: 8px;
-        padding: 20px;
-        box-sizing: border-box;
-      }
-      
-      .rentville-card {
-        background: rgba(19, 79, 44, 0.05);
-        border: 1px solid rgba(19, 79, 44, 0.15);
-      }
-      
-      .rconnect-card {
-        background: rgba(214, 223, 36, 0.1);
-        border: 1px solid rgba(214, 223, 36, 0.2);
-      }
-      
-      .platform-icon {
-        font-size: 32px;
-        margin-bottom: 12px;
-        text-align: center;
-      }
-      
-      .platform-title {
-        font-size: 17px;
-        font-weight: 700;
-        margin-bottom: 8px;
-        text-align: center;
-      }
-      
-      .rentville-title {
-        color: #134F2C;
-      }
-      
-      .rconnect-title {
-        color: #333333;
-      }
-      
-      .platform-description {
-        font-size: 14px;
-        margin-bottom: 16px;
-        text-align: center;
-        line-height: 1.5;
-      }
-      
-      .platform-cta-container {
-        text-align: center;
-      }
-      
-      .platform-cta {
-        display: inline-block;
-        padding: 10px 20px;
-        border-radius: 4px;
-        font-weight: 600;
-        font-size: 14px;
-        text-decoration: none;
-        text-align: center;
-      }
-      
-      .rentville-cta {
-        background: #134F2C;
-        color: white;
-      }
-      
-      .rconnect-cta {
-        background: #D6DF24;
-        color: #333333;
-      }
-      
-      /* Main CTA */
-      .main-cta-container {
-        text-align: center;
-        margin: 30px 0;
-      }
-      
-      .main-cta {
-        display: inline-block;
-        background: #134F2C;
-        color: white !important;
-        text-decoration: none;
-        padding: 14px 28px;
-        border-radius: 4px;
-        font-weight: 600;
-        font-size: 16px;
-      }
-      
-      /* Footer */
-      .footer {
-        text-align: center;
-        padding: 20px;
-        font-size: 14px;
-        color: #718096;
-      }
-      
-      /* Media queries for desktop */
-      @media screen and (min-width: 480px) {
-        .platform-cards {
-          display: flex;
-          gap: 15px;
-        }
-        
-        .platform-card {
-          width: 50% !important;
-          margin-bottom: 0;
-        }
-        
-        .header {
-          padding: 40px 20px;
-        }
-        
-        .logo {
-          height: 50px;
-          max-width: 200px;
-        }
-      }
-      
-      /* Outlook-specific fixes */
-      .ExternalClass, .ExternalClass p, .ExternalClass span, 
-      .ExternalClass font, .ExternalClass td, .ExternalClass div {
-        line-height: 100%;
-      }
-    </style>
-  </head>
-  <body style="margin: 0; padding: 0;">
-    <!--[if mso]>
-    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
-    <tr>
-    <td style="padding: 20px;">
-    <![endif]-->
-    
-    <div class="email-container">
-      <div class="header">
-        <div class="logo-container">
-          <img src="https://res.cloudinary.com/dryotb3zj/image/upload/v1749375993/v1ydcvsx126betr6piha.svg" alt="Rentville Logo" class="logo" style="height: 40px; max-width: 180px;">
-        </div>
-        
-        <div class="platform-tabs">
-          <span class="platform-tab rentville-tab">Rentville</span>
-          <span class="platform-tab rconnect-tab">RConnect</span>
-        </div>
-      </div>
-      
-      <div class="content">
-        <p class="welcome-text" style="font-size: 16px; text-align: center; margin-bottom: 25px; line-height: 1.5;">
-          Welcome to our complete housing ecosystem, ${user}! Whether you need a property or roommate, we've got you covered.
-        </p>
-        
-        <div class="platform-cards" style="display: block; width: 100%; margin: 25px 0;">
-          <!--[if mso]>
-          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
-          <tr>
-          <td width="50%" valign="top" style="padding: 0 7.5px 15px 0;">
-          <![endif]-->
-          <div class="platform-card rentville-card" style="width: 100% !important; margin-bottom: 15px; border-radius: 8px; padding: 20px; box-sizing: border-box; background: rgba(19, 79, 44, 0.05); border: 1px solid rgba(19, 79, 44, 0.15);">
-            <div class="platform-icon" style="font-size: 32px; margin-bottom: 12px; text-align: center;">🏠</div>
-            <h3 class="platform-title rentville-title" style="font-size: 17px; font-weight: 700; margin-bottom: 8px; text-align: center; color: #134F2C;">Rentville Properties</h3>
-            <p class="platform-description" style="font-size: 14px; margin-bottom: 16px; text-align: center; line-height: 1.5;">
-              Discover verified rental listings from trusted landlords across Nigeria. No scams, no hidden fees - just quality homes.
-            </p>
-            <div class="platform-cta-container" style="text-align: center;">
-              <a href="https://www.rentville.ng/properties" class="platform-cta rentville-cta" style="display: inline-block; padding: 10px 20px; border-radius: 4px; font-weight: 600; font-size: 14px; text-decoration: none; text-align: center; background: #134F2C; color: white;">Browse Listings</a>
-            </div>
-          </div>
-          <!--[if mso]>
-          </td>
-          <td width="50%" valign="top" style="padding: 0 0 15px 7.5px;">
-          <![endif]-->
-          <div class="platform-card rconnect-card" style="width: 100% !important; margin-bottom: 15px; border-radius: 8px; padding: 20px; box-sizing: border-box; background: rgba(214, 223, 36, 0.1); border: 1px solid rgba(214, 223, 36, 0.2);">
-            <div class="platform-icon" style="font-size: 32px; margin-bottom: 12px; text-align: center;">👥</div>
-            <h3 class="platform-title rconnect-title" style="font-size: 17px; font-weight: 700; margin-bottom: 8px; text-align: center; color: #333333;">RConnect Matching</h3>
-            <p class="platform-description" style="font-size: 14px; margin-bottom: 16px; text-align: center; line-height: 1.5;">
-              Find compatible roommates or fill vacant rooms without agent fees. Perfect for students and young professionals.
-            </p>
-            <div class="platform-cta-container" style="text-align: center;">
-              <a href="https://rconnect.rentville.ng/roommates" class="platform-cta rconnect-cta" style="display: inline-block; padding: 10px 20px; border-radius: 4px; font-weight: 600; font-size: 14px; text-decoration: none; text-align: center; background: #D6DF24; color: #333333;">Match Now</a>
-            </div>
-          </div>
-          <!--[if mso]>
-          </td>
-          </tr>
-          </table>
-          <![endif]-->
-        </div>
-        
-        <div class="main-cta-container" style="text-align: center; margin: 30px 0;">
-          <a href="${
-            process.env.DOMAIN_URL || "https://rconnect.rentville.ng"
-          }/dashboard" class="main-cta" style="display: inline-block; background: #134F2C; color: white !important; text-decoration: none; padding: 14px 28px; border-radius: 4px; font-weight: 600; font-size: 16px;">Get Started Now</a>
-        </div>
-        
-        <p style="text-align: center; font-size: 14px; color: #718096; margin-top: 30px;">
-          Need help? Contact us at <a href="mailto:${
-            process.env.SUPPORT_EMAIL || "rentvilleinfo@gmail.com"
-          }" style="color: #134F2C; text-decoration: none;">${
-      process.env.SUPPORT_EMAIL || "rentvilleinfo@gmail.com"
-    }</a>
-        </p>
-      </div>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Welcome to PXF</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: #f9fafb;
+      font-family: 'Inter', Arial, sans-serif;
+      color: #111827;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      background: #ffffff;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .header {
+      background: linear-gradient(135deg, #0f172a, #2563eb);
+      padding: 30px 20px;
+      text-align: center;
+      color: #fff;
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 24px;
+      font-weight: 700;
+    }
+    .hero {
+      text-align: center;
+      padding: 30px 20px;
+    }
+    .hero h2 {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 15px;
+      color: #111827;
+    }
+    .hero p {
+      font-size: 15px;
+      color: #374151;
+      line-height: 1.6;
+      margin-bottom: 25px;
+    }
+    .cta-btn {
+      display: inline-block;
+      background: #2563eb;
+      color: #ffffff !important;
+      padding: 14px 28px;
+      font-size: 16px;
+      font-weight: 600;
+      border-radius: 6px;
+      text-decoration: none;
+    }
+    .features {
+      padding: 25px 20px;
+    }
+    .feature {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .feature h3 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #2563eb;
+    }
+    .feature p {
+      font-size: 14px;
+      color: #4b5563;
+      margin: 0;
+    }
+    .footer {
+      text-align: center;
+      font-size: 13px;
+      color: #6b7280;
+      padding: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <h1>Welcome to PXF 🎉</h1>
+      <p style="margin-top: 8px; font-size:14px;">Hi ${user}, let’s capture every moment together</p>
     </div>
     
-    <!--[if mso]>
-    </td>
-    </tr>
-    </table>
-    <![endif]-->
-  </body>
-  </html>`,
+    <!-- Hero section -->
+    <div class="hero">
+      <h2>Collect & Share Your Event Memories</h2>
+      <p>
+        With <b>PXF</b>, you can easily collect, upload, and share photos and videos 
+        from your events in one beautiful digital album. Setup is a breeze — 
+        and sharing with your guests is even easier.
+      </p>
+      <a href="${
+        process.env.DOMAIN_URL || "https://pxf.com"
+      }/dashboard" class="cta-btn">Get Started</a>
+    </div>
+
+    <!-- Features -->
+    <div class="features">
+      <div class="feature">
+        <h3>📸 Upload & Collect</h3>
+        <p>Guests and hosts can upload unlimited event photos & videos.</p>
+      </div>
+      <div class="feature">
+        <h3>💾 Easy Downloads</h3>
+        <p>Save your favorite memories instantly, anytime.</p>
+      </div>
+      <div class="feature">
+        <h3>🎉 Share Effortlessly</h3>
+        <p>One link is all it takes to share with your guests.</p>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      Need help? Contact us at 
+      <a href="mailto:${
+        process.env.SUPPORT_EMAIL || "pxfsupport@gmail.com"
+      }" style="color:#2563eb; text-decoration:none;">
+        ${process.env.SUPPORT_EMAIL || "pxfsupport@gmail.com"}
+      </a>
+      <br/><br/>
+      © ${new Date().getFullYear()} PXF. All rights reserved.
+    </div>
+  </div>
+</body>
+</html>`,
   });
 };
+
 export const sendPasswordResetCode = ({
   sender,
   recipient,
@@ -428,7 +576,7 @@ export const sendPasswordResetCode = ({
       <div class="content">
           <p>Dear ${user},</p>
   
-          <p>We received a request to reset your password for your account with <strong>Rentville</strong>. To complete this process, please use the following code:</p>
+          <p>We received a request to reset your password for your account with <strong>PXF</strong>. To complete this process, please use the following code:</p>
   
           <div class="code">
               Your Password Reset Code: ${verificationCode}
@@ -438,7 +586,7 @@ export const sendPasswordResetCode = ({
   
           <p>If you didn't request a password reset, please ignore this email or contact our support team immediately if you have concerns about your account security.</p>
   
-          <p>Need help? Contact our support team at <a href="mailto:rentvilleinfo@gmail.com">rentvilleinfo@gmail.com</a>.</p>
+          <p>Need help? Contact our support team at <a href="mailto:pxfsupport@gmail.com">pxfsupport@gmail.com</a>.</p>
   
           <p>Best regards,</p>
           <p><strong>The Rentville Team</strong></p>
@@ -462,13 +610,13 @@ export const sendAgentVerifiedMail = ({
   return sendEmail({
     from: sender,
     to: recipient,
-    subject: "Welcome to Rentville - Your Account is Approved!",
+    subject: "Welcome to PXF - Your Account is Approved!",
     html: `<!DOCTYPE html>
   <html lang="en">
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rentville Account Approval</title>
+    <title>PXF Account Approval</title>
     <style>
       body {
         font-family: Arial, sans-serif;
@@ -519,11 +667,11 @@ export const sendAgentVerifiedMail = ({
   <body>
     <div class="container">
       <div class="header">
-        <h1>Welcome to Rentville!</h1>
+        <h1>Welcome to PXF!</h1>
       </div>
       <div class="content">
         <p>Dear ${user},</p>
-        <p>We're excited to inform you that your Rentville account has been approved! Our team has carefully reviewed your information, and you're now ready to start using our platform.</p>
+        <p>We're excited to inform you that your PXF account has been approved! Our team has carefully reviewed your information, and you're now ready to start using our platform.</p>
         <p>Here's what you can do next:</p>
         <ol>
           <li>Log in to your account at <a href="https://rconnect.rentville.ng/sign-in" target="_blank">www.rentville.ng/sign-in</a></li>
