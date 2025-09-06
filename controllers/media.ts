@@ -415,13 +415,16 @@ export const getEventUploadStats = async (
       attributes: [
         "uploadedBy",
         [
-          EventMedia.sequelize!.fn("COUNT", EventMedia.sequelize!.col("id")),
+          EventMedia.sequelize!.fn(
+            "COUNT",
+            EventMedia.sequelize!.col("EventMedia.id")
+          ),
           "uploadCount",
         ],
         [
           EventMedia.sequelize!.fn(
             "SUM",
-            EventMedia.sequelize!.col("fileSize")
+            EventMedia.sequelize!.col("EventMedia.fileSize")
           ),
           "totalFileSize",
         ],
@@ -441,7 +444,10 @@ export const getEventUploadStats = async (
       ],
       order: [
         [
-          EventMedia.sequelize!.fn("COUNT", EventMedia.sequelize!.col("id")),
+          EventMedia.sequelize!.fn(
+            "COUNT",
+            EventMedia.sequelize!.col("EventMedia.id")
+          ),
           "DESC",
         ],
       ],
@@ -539,7 +545,10 @@ export const getEventParticipantsWithUploads = async (
       attributes: [
         "uploadedBy",
         [
-          EventMedia.sequelize!.fn("COUNT", EventMedia.sequelize!.col("id")),
+          EventMedia.sequelize!.fn(
+            "COUNT",
+            EventMedia.sequelize!.col("EventMedia.id")
+          ),
           "uploadCount",
         ],
       ],
@@ -558,7 +567,10 @@ export const getEventParticipantsWithUploads = async (
       ],
       order: [
         [
-          EventMedia.sequelize!.fn("COUNT", EventMedia.sequelize!.col("id")),
+          EventMedia.sequelize!.fn(
+            "COUNT",
+            EventMedia.sequelize!.col("EventMedia.id")
+          ),
           "DESC",
         ],
       ],

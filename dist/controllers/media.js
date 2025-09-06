@@ -362,11 +362,11 @@ const getEventUploadStats = async (req, res, next) => {
             attributes: [
                 "uploadedBy",
                 [
-                    eventMedia_1.default.sequelize.fn("COUNT", eventMedia_1.default.sequelize.col("id")),
+                    eventMedia_1.default.sequelize.fn("COUNT", eventMedia_1.default.sequelize.col("EventMedia.id")),
                     "uploadCount",
                 ],
                 [
-                    eventMedia_1.default.sequelize.fn("SUM", eventMedia_1.default.sequelize.col("fileSize")),
+                    eventMedia_1.default.sequelize.fn("SUM", eventMedia_1.default.sequelize.col("EventMedia.fileSize")),
                     "totalFileSize",
                 ],
             ],
@@ -385,7 +385,7 @@ const getEventUploadStats = async (req, res, next) => {
             ],
             order: [
                 [
-                    eventMedia_1.default.sequelize.fn("COUNT", eventMedia_1.default.sequelize.col("id")),
+                    eventMedia_1.default.sequelize.fn("COUNT", eventMedia_1.default.sequelize.col("EventMedia.id")),
                     "DESC",
                 ],
             ],
@@ -467,7 +467,7 @@ const getEventParticipantsWithUploads = async (req, res, next) => {
             attributes: [
                 "uploadedBy",
                 [
-                    eventMedia_1.default.sequelize.fn("COUNT", eventMedia_1.default.sequelize.col("id")),
+                    eventMedia_1.default.sequelize.fn("COUNT", eventMedia_1.default.sequelize.col("EventMedia.id")),
                     "uploadCount",
                 ],
             ],
@@ -486,7 +486,7 @@ const getEventParticipantsWithUploads = async (req, res, next) => {
             ],
             order: [
                 [
-                    eventMedia_1.default.sequelize.fn("COUNT", eventMedia_1.default.sequelize.col("id")),
+                    eventMedia_1.default.sequelize.fn("COUNT", eventMedia_1.default.sequelize.col("EventMedia.id")),
                     "DESC",
                 ],
             ],
