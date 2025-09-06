@@ -104,9 +104,14 @@ export const createEvent = async (
       }
     }
 
-    // Validate event date if provided
-    if (eventDate && new Date(eventDate) < new Date()) {
-      throw new BadRequestError("Event date must be in the future");
+    // Validate event date if provided (allow today)
+    if (eventDate) {
+      const eventDateObj = new Date(eventDate);
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      if (eventDateObj < todayStart) {
+        throw new BadRequestError("Event date cannot be in the past");
+      }
     }
 
     // Only generate slug/QR for free plan at creation time
@@ -389,9 +394,14 @@ export const updateEvent = async (
       }
     }
 
-    // Validate event date if provided
-    if (eventDate && new Date(eventDate) < new Date()) {
-      throw new BadRequestError("Event date must be in the future");
+    // Validate event date if provided (allow today)
+    if (eventDate) {
+      const eventDateObj = new Date(eventDate);
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      if (eventDateObj < todayStart) {
+        throw new BadRequestError("Event date cannot be in the past");
+      }
     }
 
     // Update the event

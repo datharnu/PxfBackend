@@ -340,8 +340,13 @@ router.post("/", [
         .isISO8601()
         .withMessage("Event date must be a valid date")
         .custom((value) => {
-        if (value && new Date(value) < new Date()) {
-            throw new Error("Event date must be in the future");
+        if (value) {
+            const date = new Date(value);
+            const todayStart = new Date();
+            todayStart.setHours(0, 0, 0, 0);
+            if (date < todayStart) {
+                throw new Error("Event date cannot be in the past");
+            }
         }
         return true;
     }),
@@ -439,8 +444,13 @@ router.put("/:id", [
         .isISO8601()
         .withMessage("Event date must be a valid date")
         .custom((value) => {
-        if (value && new Date(value) < new Date()) {
-            throw new Error("Event date must be in the future");
+        if (value) {
+            const date = new Date(value);
+            const todayStart = new Date();
+            todayStart.setHours(0, 0, 0, 0);
+            if (date < todayStart) {
+                throw new Error("Event date cannot be in the past");
+            }
         }
         return true;
     }),

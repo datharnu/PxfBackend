@@ -93,9 +93,14 @@ const createEvent = async (req, res, next) => {
                 throw new badRequest_1.default("customPhotoCapLimit must be an integer greater than 25 when photoCapLimit is CUSTOM");
             }
         }
-        // Validate event date if provided
-        if (eventDate && new Date(eventDate) < new Date()) {
-            throw new badRequest_1.default("Event date must be in the future");
+        // Validate event date if provided (allow today)
+        if (eventDate) {
+            const eventDateObj = new Date(eventDate);
+            const todayStart = new Date();
+            todayStart.setHours(0, 0, 0, 0);
+            if (eventDateObj < todayStart) {
+                throw new badRequest_1.default("Event date cannot be in the past");
+            }
         }
         // Only generate slug/QR for free plan at creation time
         let eventSlug;
@@ -306,9 +311,14 @@ const updateEvent = async (req, res, next) => {
                 throw new badRequest_1.default("customPhotoCapLimit must be an integer greater than 25 when photoCapLimit is CUSTOM");
             }
         }
-        // Validate event date if provided
-        if (eventDate && new Date(eventDate) < new Date()) {
-            throw new badRequest_1.default("Event date must be in the future");
+        // Validate event date if provided (allow today)
+        if (eventDate) {
+            const eventDateObj = new Date(eventDate);
+            const todayStart = new Date();
+            todayStart.setHours(0, 0, 0, 0);
+            if (eventDateObj < todayStart) {
+                throw new badRequest_1.default("Event date cannot be in the past");
+            }
         }
         // Update the event
         const updatedEvent = await event.update({

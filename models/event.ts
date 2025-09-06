@@ -229,9 +229,14 @@ Event.init(
       allowNull: true,
       validate: {
         isDate: true,
-        isAfterToday(value: Date) {
-          if (value && new Date(value) < new Date()) {
-            throw new Error("Event date must be in the future");
+        isNotPast(value: Date) {
+          if (value) {
+            const eventDateObj = new Date(value);
+            const todayStart = new Date();
+            todayStart.setHours(0, 0, 0, 0);
+            if (eventDateObj < todayStart) {
+              throw new Error("Event date cannot be in the past");
+            }
           }
         },
       },
