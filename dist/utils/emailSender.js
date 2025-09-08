@@ -289,13 +289,13 @@ const sendWelcomeMessage = ({ sender, recipient, user, }) => {
     return (0, sendEmail_1.default)({
         from: sender,
         to: recipient,
-        subject: "🎉 Welcome to PXF – Capture Every Moment Effortlessly",
+        subject: "🎉 Welcome to MEMORIA – Capture Every Moment Effortlessly",
         html: `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Welcome to PXF</title>
+  <title>Welcome to MEMORIA</title>
   <style>
     body {
       margin: 0;
@@ -378,7 +378,7 @@ const sendWelcomeMessage = ({ sender, recipient, user, }) => {
   <div class="container">
     <!-- Header -->
     <div class="header">
-      <h1>Welcome to PXF 🎉</h1>
+      <h1>Welcome to MEMORIA 🎉</h1>
       <p style="margin-top: 8px; font-size:14px;">Hi ${user}, let’s capture every moment together</p>
     </div>
     
@@ -386,7 +386,7 @@ const sendWelcomeMessage = ({ sender, recipient, user, }) => {
     <div class="hero">
       <h2>Collect & Share Your Event Memories</h2>
       <p>
-        With <b>PXF</b>, you can easily collect, upload, and share photos and videos 
+        With <b>MEMORIA</b>, you can easily collect, upload, and share photos and videos 
         from your events in one beautiful digital album. Setup is a breeze — 
         and sharing with your guests is even easier.
       </p>
@@ -412,11 +412,11 @@ const sendWelcomeMessage = ({ sender, recipient, user, }) => {
     <!-- Footer -->
     <div class="footer">
       Need help? Contact us at 
-      <a href="mailto:${process.env.SUPPORT_EMAIL || "pxfsupport@gmail.com"}" style="color:#2563eb; text-decoration:none;">
-        ${process.env.SUPPORT_EMAIL || "pxfsupport@gmail.com"}
+      <a href="mailto:${process.env.SUPPORT_EMAIL || "memoriapxfhelp@gmail.com"}" style="color:#2563eb; text-decoration:none;">
+        ${process.env.SUPPORT_EMAIL || "memoriapxfhelp@gmail.com"}
       </a>
       <br/><br/>
-      © ${new Date().getFullYear()} PXF. All rights reserved.
+      © ${new Date().getFullYear()} MEMORIA. All rights reserved.
     </div>
   </div>
 </body>
@@ -500,7 +500,7 @@ const sendPasswordResetCode = ({ sender, recipient, verificationCode, user, }) =
       <div class="content">
           <p>Dear ${user},</p>
   
-          <p>We received a request to reset your password for your account with <strong>PXF</strong>. To complete this process, please use the following code:</p>
+          <p>We received a request to reset your password for your account with <strong>MEMORIA</strong>. To complete this process, please use the following code:</p>
   
           <div class="code">
               Your Password Reset Code: ${verificationCode}
@@ -510,13 +510,13 @@ const sendPasswordResetCode = ({ sender, recipient, verificationCode, user, }) =
   
           <p>If you didn't request a password reset, please ignore this email or contact our support team immediately if you have concerns about your account security.</p>
   
-          <p>Need help? Contact our support team at <a href="mailto:pxfsupport@gmail.com">pxfsupport@gmail.com</a>.</p>
+          <p>Need help? Contact our support team at <a href="mailto:memoriapxfhelp@gmail.com">memoriapxfhelp@gmail.com</a>.</p>
   
           <p>Best regards,</p>
-          <p><strong>The Rentville Team</strong></p>
+          <p><strong>The Memoria Team</strong></p>
       </div>
       <div class="footer">
-          <p>&copy; 2024 Rentville. All rights reserved.</p>
+          <p>&copy; 2025 Memoria. All rights reserved.</p>
       </div>
   </div>
   
@@ -530,13 +530,13 @@ const sendAgentVerifiedMail = ({ sender, recipient, user, }) => {
     return (0, sendEmail_1.default)({
         from: sender,
         to: recipient,
-        subject: "Welcome to PXF - Your Account is Approved!",
+        subject: "Welcome to MEMORIA - Your Account is Approved!",
         html: `<!DOCTYPE html>
   <html lang="en">
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PXF Account Approval</title>
+    <title>MEMORIA Account Approval</title>
     <style>
       body {
         font-family: Arial, sans-serif;
