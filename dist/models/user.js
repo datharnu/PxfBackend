@@ -195,6 +195,7 @@ class User extends sequelize_1.Model {
             id: this.id,
             email: this.email,
             isActive: this.isActive,
+            role: this.role || "user",
             tokenVersion: this.tokenVersion || 0,
         }, JWT_SECRET, {
             expiresIn: JWT_LIFETIME,
@@ -293,6 +294,11 @@ User.init({
         type: sequelize_1.DataTypes.INTEGER,
         allowNull: true,
         defaultValue: 0,
+    },
+    role: {
+        type: sequelize_1.DataTypes.ENUM("user", "admin", "superadmin"),
+        allowNull: true,
+        defaultValue: "user",
     },
     isActive: {
         type: sequelize_1.DataTypes.BOOLEAN,

@@ -191,6 +191,7 @@ interface UserAttributes {
   googleId?: string;
   isActive?: boolean;
   refreshToken?: string | null;
+  role?: string;
   createdAt: Date;
   updatedAt: Date;
   verificationCode?: string | null;
@@ -207,6 +208,7 @@ interface UserCreationAttributes
     | "updatedAt"
     | "tokenVersion"
     | "lastPasswordResetRequest"
+    | "role"
   > {}
 
 class User
@@ -220,6 +222,7 @@ class User
   public googleId?: string;
   public isActive?: boolean;
   public refreshToken?: string | null;
+  public role?: string;
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
   public verificationCode?: string | null;
@@ -250,6 +253,7 @@ class User
         id: this.id,
         email: this.email,
         isActive: this.isActive,
+        role: this.role || "user",
         tokenVersion: this.tokenVersion || 0,
       },
       JWT_SECRET,
@@ -364,6 +368,11 @@ User.init(
       type: DataTypes.INTEGER,
       allowNull: true,
       defaultValue: 0,
+    },
+    role: {
+      type: DataTypes.ENUM("user", "admin", "superadmin"),
+      allowNull: true,
+      defaultValue: "user",
     },
     isActive: {
       type: DataTypes.BOOLEAN,

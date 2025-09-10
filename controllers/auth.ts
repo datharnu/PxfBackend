@@ -887,9 +887,92 @@ export const getUserInfo = async (
         id: user.id,
         fullname: user.fullname,
         email: user.email,
+        role: user.role,
       },
     });
   } catch (error) {
+    next(error);
+  }
+};
+
+// Admin signup endpoint
+export const adminSignup = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const { fullname, email, password, confirmPassword, adminKey } = req.body;
+  try {
+    console.log("Admin signup request received:", { fullname, email });
+
+    // Input validation
+    if (!fullname || !email || !password || !confirmPassword || !adminKey) {
+      console.log("Validation failed: Missing fields");
+      throw new BadRequestError("All fields are required");
+    }
+
+    // Verify admin key (you should set this in your environment variables)
+    const ADMIN_SIGNUP_KEY = process.env.ADMIN_SIGNUP_KEY;
+    if (!ADMIN_SIGNUP_KEY || adminKey !== ADMIN_SIGNUP_KEY) {
+      throw new BadRequestError("Invalid admin signup key");
+    }
+
+    // Email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      console.log("Validation failed: Invalid email format");
+      throw new BadRequestError("Invalid email format");
+    }
+
+    // Password strength validation
+    if (password.length < 8) {
+      console.log("Validation failed: Password too short");
+      throw new BadRequestError("Password must be at least 8 characters long");
+    }
+
+    if (password !== confirmPassword) {
+      console.log("Validation failed: Password mismatch");
+      throw new BadRequestError("Password and confirm password do not match");
+    }
+
+    console.log("Checking for existing user...");
+    const existingUser = await User.findOne({ where: { email } });
+    if (existingUser) {
+      console.log("Validation failed: Email exists");
+      throw new BadRequestError("Email already exists");
+    }
+
+    console.log("Hashing password...");
+    const saltRounds = 12;
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+    console.log("Password hashed successfully");
+
+    console.log("Creating admin user...");
+    const user = await User.create({
+      fullname,
+      email,
+      password: hashedPassword,
+      role: "admin", // Set role as admin
+    });
+    console.log("Admin user created successfully:", user.id);
+
+    // Remove password from response
+    const userResponse = {
+      id: user.id,
+      fullname: user.fullname,
+      email: user.email,
+      role: user.role,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    };
+
+    return res.status(201).json({
+      success: true,
+      message: "Admin user created successfully",
+      user: userResponse,
+    });
+  } catch (error) {
+    console.error("Admin signup error:", error);
     next(error);
   }
 };

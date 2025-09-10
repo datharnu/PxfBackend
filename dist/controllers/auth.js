@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getUserInfo = exports.logout = exports.verifyRefreshToken = exports.getNewAccessToken = exports.resetPassword = exports.verifyPasswordResetCode = exports.forgotPassword = exports.googleLogin = exports.login = exports.signup = void 0;
+exports.adminSignup = exports.getUserInfo = exports.logout = exports.verifyRefreshToken = exports.getNewAccessToken = exports.resetPassword = exports.verifyPasswordResetCode = exports.forgotPassword = exports.googleLogin = exports.login = exports.signup = void 0;
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const user_1 = __importDefault(require("../models/user"));
 const badRequest_1 = __importDefault(require("../errors/badRequest"));
@@ -719,6 +719,7 @@ res, next) => {
                 id: user.id,
                 fullname: user.fullname,
                 email: user.email,
+                role: user.role,
             },
         });
     }
@@ -727,3 +728,72 @@ res, next) => {
     }
 };
 exports.getUserInfo = getUserInfo;
+// Admin signup endpoint
+const adminSignup = async (req, res, next) => {
+    const { fullname, email, password, confirmPassword, adminKey } = req.body;
+    try {
+        console.log("Admin signup request received:", { fullname, email });
+        // Input validation
+        if (!fullname || !email || !password || !confirmPassword || !adminKey) {
+            console.log("Validation failed: Missing fields");
+            throw new badRequest_1.default("All fields are required");
+        }
+        // Verify admin key (you should set this in your environment variables)
+        const ADMIN_SIGNUP_KEY = process.env.ADMIN_SIGNUP_KEY;
+        if (!ADMIN_SIGNUP_KEY || adminKey !== ADMIN_SIGNUP_KEY) {
+            throw new badRequest_1.default("Invalid admin signup key");
+        }
+        // Email format validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            console.log("Validation failed: Invalid email format");
+            throw new badRequest_1.default("Invalid email format");
+        }
+        // Password strength validation
+        if (password.length < 8) {
+            console.log("Validation failed: Password too short");
+            throw new badRequest_1.default("Password must be at least 8 characters long");
+        }
+        if (password !== confirmPassword) {
+            console.log("Validation failed: Password mismatch");
+            throw new badRequest_1.default("Password and confirm password do not match");
+        }
+        console.log("Checking for existing user...");
+        const existingUser = await user_1.default.findOne({ where: { email } });
+        if (existingUser) {
+            console.log("Validation failed: Email exists");
+            throw new badRequest_1.default("Email already exists");
+        }
+        console.log("Hashing password...");
+        const saltRounds = 12;
+        const hashedPassword = await bcryptjs_1.default.hash(password, saltRounds);
+        console.log("Password hashed successfully");
+        console.log("Creating admin user...");
+        const user = await user_1.default.create({
+            fullname,
+            email,
+            password: hashedPassword,
+            role: "admin", // Set role as admin
+        });
+        console.log("Admin user created successfully:", user.id);
+        // Remove password from response
+        const userResponse = {
+            id: user.id,
+            fullname: user.fullname,
+            email: user.email,
+            role: user.role,
+            createdAt: user.createdAt,
+            updatedAt: user.updatedAt,
+        };
+        return res.status(201).json({
+            success: true,
+            message: "Admin user created successfully",
+            user: userResponse,
+        });
+    }
+    catch (error) {
+        console.error("Admin signup error:", error);
+        next(error);
+    }
+};
+exports.adminSignup = adminSignup;
