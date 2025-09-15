@@ -29,6 +29,9 @@
     "typescript": "^5.8.3"
   },
   "dependencies": {
+    "@azure/cognitiveservices-face": "^5.0.0",
+    "@azure/ms-rest-js": "^2.7.0",
+    "@types/uuid": "^10.0.0",
     "axios": "^1.11.0",
     "bcryptjs": "^3.0.2",
     "cloudinary": "^2.7.0",

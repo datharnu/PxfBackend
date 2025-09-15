@@ -49,6 +49,9 @@ class EventMedia
   public readonly updatedAt!: Date;
   uploader: any;
 
+  // Association properties
+  public event?: any;
+
   // Method to get file size in human readable format
   public getFileSizeFormatted(): string {
     const bytes = this.fileSize;

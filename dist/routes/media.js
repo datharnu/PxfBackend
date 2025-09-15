@@ -109,4 +109,33 @@ router.get("/event/:eventId/user/:userId", [
 ], customValidations_1.validate, media_1.getEventUserUploads);
 // Delete user's media upload
 router.delete("/:mediaId", [(0, express_validator_1.param)("mediaId").isUUID().withMessage("Media ID must be a valid UUID")], customValidations_1.validate, media_1.deleteUserMedia);
+// Face detection and filtering routes
+// Get media filtered by user's face detection
+router.get("/event/:eventId/my-faces", [
+    (0, express_validator_1.param)("eventId").isUUID().withMessage("Event ID must be a valid UUID"),
+    (0, express_validator_1.query)("page")
+        .optional()
+        .isInt({ min: 1 })
+        .withMessage("Page must be a positive integer"),
+    (0, express_validator_1.query)("limit")
+        .optional()
+        .isInt({ min: 1, max: 100 })
+        .withMessage("Limit must be between 1 and 100"),
+], customValidations_1.validate, media_1.getMediaWithUserFaces);
+// Get all face detections for an event (admin/event creator only)
+router.get("/event/:eventId/face-detections", [
+    (0, express_validator_1.param)("eventId").isUUID().withMessage("Event ID must be a valid UUID"),
+    (0, express_validator_1.query)("page")
+        .optional()
+        .isInt({ min: 1 })
+        .withMessage("Page must be a positive integer"),
+    (0, express_validator_1.query)("limit")
+        .optional()
+        .isInt({ min: 1, max: 100 })
+        .withMessage("Limit must be between 1 and 100"),
+], customValidations_1.validate, media_1.getEventFaceDetections);
+// Get face detection statistics for an event (admin/event creator only)
+router.get("/event/:eventId/face-stats", [(0, express_validator_1.param)("eventId").isUUID().withMessage("Event ID must be a valid UUID")], customValidations_1.validate, media_1.getEventFaceStats);
+// Retrain face identification for an event (admin/event creator only)
+router.post("/event/:eventId/retrain-faces", [(0, express_validator_1.param)("eventId").isUUID().withMessage("Event ID must be a valid UUID")], customValidations_1.validate, media_1.retrainFaceIdentification);
 exports.default = router;

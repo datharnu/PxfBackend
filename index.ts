@@ -18,6 +18,7 @@ import eventRouter from "./routes/event";
 import mediaRouter from "./routes/media";
 import paymentRouter from "./routes/payment";
 import adminRouter from "./routes/admin";
+import faceManagementRouter from "./routes/faceManagement";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -57,6 +58,7 @@ app.use("/api/v1/events", eventRouter);
 app.use("/api/v1/media", mediaRouter);
 app.use("/api/v1/payments", paymentRouter);
 app.use("/api/v1/admin", adminRouter);
+app.use("/api/v1/faces", faceManagementRouter);
 
 // Error handling middleware (must be last)
 app.use(errorHandlerMiddleware);

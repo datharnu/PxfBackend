@@ -14,6 +14,10 @@ import {
   uploadMiddleware,
   submitCloudinaryMedia,
   getCloudinarySignature,
+  getMediaWithUserFaces,
+  getEventFaceDetections,
+  getEventFaceStats,
+  retrainFaceIdentification,
 } from "../controllers/media";
 
 const router = express.Router();
@@ -172,6 +176,60 @@ router.delete(
   [param("mediaId").isUUID().withMessage("Media ID must be a valid UUID")],
   validate,
   deleteUserMedia
+);
+
+// Face detection and filtering routes
+
+// Get media filtered by user's face detection
+router.get(
+  "/event/:eventId/my-faces",
+  [
+    param("eventId").isUUID().withMessage("Event ID must be a valid UUID"),
+    query("page")
+      .optional()
+      .isInt({ min: 1 })
+      .withMessage("Page must be a positive integer"),
+    query("limit")
+      .optional()
+      .isInt({ min: 1, max: 100 })
+      .withMessage("Limit must be between 1 and 100"),
+  ],
+  validate,
+  getMediaWithUserFaces
+);
+
+// Get all face detections for an event (admin/event creator only)
+router.get(
+  "/event/:eventId/face-detections",
+  [
+    param("eventId").isUUID().withMessage("Event ID must be a valid UUID"),
+    query("page")
+      .optional()
+      .isInt({ min: 1 })
+      .withMessage("Page must be a positive integer"),
+    query("limit")
+      .optional()
+      .isInt({ min: 1, max: 100 })
+      .withMessage("Limit must be between 1 and 100"),
+  ],
+  validate,
+  getEventFaceDetections
+);
+
+// Get face detection statistics for an event (admin/event creator only)
+router.get(
+  "/event/:eventId/face-stats",
+  [param("eventId").isUUID().withMessage("Event ID must be a valid UUID")],
+  validate,
+  getEventFaceStats
+);
+
+// Retrain face identification for an event (admin/event creator only)
+router.post(
+  "/event/:eventId/retrain-faces",
+  [param("eventId").isUUID().withMessage("Event ID must be a valid UUID")],
+  validate,
+  retrainFaceIdentification
 );
 
 export default router;

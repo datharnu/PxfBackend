@@ -36,7 +36,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.uploadMiddleware = exports.getEventMediaBySlug = exports.deleteUserMedia = exports.getEventUserUploads = exports.getEventParticipantsWithUploads = exports.getEventUploadStats = exports.getUserEventUploads = exports.getEventMedia = exports.getCloudinarySignature = exports.submitCloudinaryMedia = void 0;
+exports.uploadMiddleware = exports.retrainFaceIdentification = exports.getEventFaceStats = exports.getEventFaceDetections = exports.getMediaWithUserFaces = exports.getEventMediaBySlug = exports.deleteUserMedia = exports.getEventUserUploads = exports.getEventParticipantsWithUploads = exports.getEventUploadStats = exports.getUserEventUploads = exports.getEventMedia = exports.getCloudinarySignature = exports.submitCloudinaryMedia = void 0;
 const http_status_codes_1 = require("http-status-codes");
 const cloudinary_1 = require("cloudinary");
 const event_1 = __importDefault(require("../models/event"));
@@ -46,6 +46,7 @@ const badRequest_1 = __importDefault(require("../errors/badRequest"));
 const notFound_1 = __importDefault(require("../errors/notFound"));
 const unauthorized_1 = __importDefault(require("../errors/unauthorized"));
 const fileUpload_1 = __importDefault(require("../utils/fileUpload"));
+const faceProcessingService_1 = __importDefault(require("../utils/faceProcessingService"));
 cloudinary_1.v2.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
     api_key: process.env.CLOUDINARY_API_KEY,
@@ -112,6 +113,20 @@ const submitCloudinaryMedia = async (req, res, next) => {
             });
             mediaRecords.push(mediaRecord);
         }
+        // Process faces in uploaded images (async, don't wait for completion)
+        const imageMediaIds = mediaRecords
+            .filter((media) => media.mediaType === eventMedia_1.MediaType.IMAGE)
+            .map((media) => media.id);
+        if (imageMediaIds.length > 0) {
+            // Process faces asynchronously
+            faceProcessingService_1.default.processMultipleMediaForFaces(imageMediaIds)
+                .then((results) => {
+                console.log(`Face processing completed for ${imageMediaIds.length} images:`, results);
+            })
+                .catch((error) => {
+                console.error("Face processing failed:", error);
+            });
+        }
         // Get updated stats
         const updatedUserUploads = await eventMedia_1.default.count({
             where: {
@@ -128,6 +143,10 @@ const submitCloudinaryMedia = async (req, res, next) => {
                 totalUploads: updatedUserUploads,
                 remainingUploads: photoCapLimit - updatedUserUploads,
                 photoCapLimit,
+            },
+            faceProcessing: {
+                imagesProcessed: imageMediaIds.length,
+                status: "processing",
             },
         });
     }
@@ -747,5 +766,176 @@ const getEventMediaBySlug = async (req, res, next) => {
     }
 };
 exports.getEventMediaBySlug = getEventMediaBySlug;
+// Get media filtered by user's face detection
+const getMediaWithUserFaces = async (req, res, next) => {
+    try {
+        const { eventId } = req.params;
+        const { page = 1, limit = 20 } = req.query;
+        const userId = req.user?.id;
+        if (!userId) {
+            throw new badRequest_1.default("User authentication required");
+        }
+        const pageNum = parseInt(page, 10);
+        const limitNum = parseInt(limit, 10);
+        // Find the event
+        const event = await event_1.default.findByPk(eventId);
+        if (!event) {
+            throw new notFound_1.default("Event not found");
+        }
+        // Get media with user's faces
+        const mediaWithFaces = await faceProcessingService_1.default.getMediaWithUserFaces(eventId, userId);
+        // Apply pagination
+        const startIndex = (pageNum - 1) * limitNum;
+        const endIndex = startIndex + limitNum;
+        const paginatedMedia = mediaWithFaces.slice(startIndex, endIndex);
+        return res.status(http_status_codes_1.StatusCodes.OK).json({
+            success: true,
+            message: "Media with your face retrieved successfully",
+            media: paginatedMedia,
+            pagination: {
+                page: pageNum,
+                limit: limitNum,
+                total: mediaWithFaces.length,
+                totalPages: Math.ceil(mediaWithFaces.length / limitNum),
+            },
+            eventInfo: {
+                id: event.id,
+                title: event.title,
+            },
+        });
+    }
+    catch (error) {
+        console.error("Get media with user faces error:", error);
+        next(error);
+    }
+};
+exports.getMediaWithUserFaces = getMediaWithUserFaces;
+// Get all face detections for an event (admin/event creator only)
+const getEventFaceDetections = async (req, res, next) => {
+    try {
+        const { eventId } = req.params;
+        const { page = 1, limit = 20 } = req.query;
+        const userId = req.user?.id;
+        if (!userId) {
+            throw new badRequest_1.default("User authentication required");
+        }
+        const pageNum = parseInt(page, 10);
+        const limitNum = parseInt(limit, 10);
+        // Find the event
+        const event = await event_1.default.findByPk(eventId);
+        if (!event) {
+            throw new notFound_1.default("Event not found");
+        }
+        // Check permissions
+        const user = await user_1.default.findByPk(userId);
+        if (!user) {
+            throw new notFound_1.default("User not found");
+        }
+        const isEventCreator = event.createdBy === userId;
+        const isAdmin = user.role === "admin" || user.role === "superadmin";
+        if (!isEventCreator && !isAdmin) {
+            throw new unauthorized_1.default("You don't have permission to view face detections");
+        }
+        // Get face detections
+        const result = await faceProcessingService_1.default.getEventFaceDetections(eventId, pageNum, limitNum);
+        return res.status(http_status_codes_1.StatusCodes.OK).json({
+            success: true,
+            message: "Face detections retrieved successfully",
+            ...result,
+            eventInfo: {
+                id: event.id,
+                title: event.title,
+            },
+        });
+    }
+    catch (error) {
+        console.error("Get event face detections error:", error);
+        next(error);
+    }
+};
+exports.getEventFaceDetections = getEventFaceDetections;
+// Get face detection statistics for an event (admin/event creator only)
+const getEventFaceStats = async (req, res, next) => {
+    try {
+        const { eventId } = req.params;
+        const userId = req.user?.id;
+        if (!userId) {
+            throw new badRequest_1.default("User authentication required");
+        }
+        // Find the event
+        const event = await event_1.default.findByPk(eventId);
+        if (!event) {
+            throw new notFound_1.default("Event not found");
+        }
+        // Check permissions
+        const user = await user_1.default.findByPk(userId);
+        if (!user) {
+            throw new notFound_1.default("User not found");
+        }
+        const isEventCreator = event.createdBy === userId;
+        const isAdmin = user.role === "admin" || user.role === "superadmin";
+        if (!isEventCreator && !isAdmin) {
+            throw new unauthorized_1.default("You don't have permission to view face statistics");
+        }
+        // Get face statistics
+        const stats = await faceProcessingService_1.default.getEventFaceStats(eventId);
+        return res.status(http_status_codes_1.StatusCodes.OK).json({
+            success: true,
+            message: "Face detection statistics retrieved successfully",
+            stats,
+            eventInfo: {
+                id: event.id,
+                title: event.title,
+            },
+        });
+    }
+    catch (error) {
+        console.error("Get event face stats error:", error);
+        next(error);
+    }
+};
+exports.getEventFaceStats = getEventFaceStats;
+// Retrain face identification for an event (admin/event creator only)
+const retrainFaceIdentification = async (req, res, next) => {
+    try {
+        const { eventId } = req.params;
+        const userId = req.user?.id;
+        if (!userId) {
+            throw new badRequest_1.default("User authentication required");
+        }
+        // Find the event
+        const event = await event_1.default.findByPk(eventId);
+        if (!event) {
+            throw new notFound_1.default("Event not found");
+        }
+        // Check permissions
+        const user = await user_1.default.findByPk(userId);
+        if (!user) {
+            throw new notFound_1.default("User not found");
+        }
+        const isEventCreator = event.createdBy === userId;
+        const isAdmin = user.role === "admin" || user.role === "superadmin";
+        if (!isEventCreator && !isAdmin) {
+            throw new unauthorized_1.default("You don't have permission to retrain face identification");
+        }
+        // Retrain face identification
+        const success = await faceProcessingService_1.default.retrainEventFaceIdentification(eventId);
+        return res.status(http_status_codes_1.StatusCodes.OK).json({
+            success,
+            message: success
+                ? "Face identification retraining started successfully"
+                : "Failed to start face identification retraining",
+            eventInfo: {
+                id: event.id,
+                title: event.title,
+            },
+        });
+    }
+    catch (error) {
+        console.error("Retrain face identification error:", error);
+        next(error);
+    }
+};
+exports.retrainFaceIdentification = retrainFaceIdentification;
 // Middleware to handle file upload
 exports.uploadMiddleware = fileUpload_1.default.array("media", 10);
