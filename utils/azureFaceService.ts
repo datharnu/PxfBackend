@@ -21,14 +21,7 @@ const faceClient = new FaceClient(credentials, AZURE_FACE_ENDPOINT);
 // Face detection options
 const DETECTION_OPTIONS: FaceModels.FaceDetectWithUrlOptionalParams = {
   returnFaceId: true,
-  returnFaceAttributes: [
-    "age",
-    "gender",
-    "smile",
-    "facialHair",
-    "glasses",
-    "emotion",
-  ],
+  returnFaceAttributes: ["glasses", "emotion"],
   detectionModel: "detection_03",
   recognitionModel: "recognition_04",
 };
@@ -48,14 +41,6 @@ export interface FaceDetectionResult {
     height: number;
   };
   faceAttributes?: {
-    age?: number;
-    gender?: string;
-    smile?: number;
-    facialHair?: {
-      moustache: number;
-      beard: number;
-      sideburns: number;
-    };
     glasses?: string;
     emotion?: {
       anger: number;
@@ -102,16 +87,6 @@ export class AzureFaceService {
         },
         faceAttributes: face.faceAttributes
           ? {
-              age: face.faceAttributes.age,
-              gender: face.faceAttributes.gender as string,
-              smile: face.faceAttributes.smile,
-              facialHair: face.faceAttributes.facialHair
-                ? {
-                    moustache: face.faceAttributes.facialHair.moustache || 0,
-                    beard: face.faceAttributes.facialHair.beard || 0,
-                    sideburns: face.faceAttributes.facialHair.sideburns || 0,
-                  }
-                : undefined,
               glasses: face.faceAttributes.glasses as string,
               emotion: face.faceAttributes.emotion
                 ? {
@@ -161,16 +136,6 @@ export class AzureFaceService {
         },
         faceAttributes: face.faceAttributes
           ? {
-              age: face.faceAttributes.age,
-              gender: face.faceAttributes.gender as string,
-              smile: face.faceAttributes.smile,
-              facialHair: face.faceAttributes.facialHair
-                ? {
-                    moustache: face.faceAttributes.facialHair.moustache || 0,
-                    beard: face.faceAttributes.facialHair.beard || 0,
-                    sideburns: face.faceAttributes.facialHair.sideburns || 0,
-                  }
-                : undefined,
               glasses: face.faceAttributes.glasses as string,
               emotion: face.faceAttributes.emotion
                 ? {

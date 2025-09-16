@@ -16,7 +16,7 @@ The system uses Microsoft Azure Face API to:
 ### 🎯 Face Detection
 
 - Automatic face detection in uploaded images
-- Face attribute extraction (age, gender, emotions, etc.)
+- Face attribute extraction (glasses, emotions)
 - Face rectangle coordinates for precise location
 
 ### 👤 Face Enrollment
@@ -287,9 +287,7 @@ const response = await myPhotos.json();
     "eventId": "uuid",
     "enrollmentConfidence": 0.95,
     "faceAttributes": {
-      "age": 25,
-      "gender": "male",
-      "smile": 0.8,
+      "glasses": "NoGlasses",
       "emotion": {
         "happiness": 0.8,
         "neutral": 0.2
@@ -326,8 +324,7 @@ const response = await myPhotos.json();
           },
           "confidence": 0.95,
           "faceAttributes": {
-            "age": 25,
-            "gender": "male"
+            "glasses": "NoGlasses"
           },
           "createdAt": "2024-01-16T10:00:00Z"
         }
@@ -382,6 +379,24 @@ const response = await myPhotos.json();
   "message": "Invalid or inaccessible media URL"
 }
 ```
+
+## Important Notes
+
+### Deprecated Face Attributes
+
+Microsoft has deprecated certain facial analysis capabilities including:
+
+- Age detection
+- Gender detection
+- Smile detection
+- Facial hair detection
+
+The system now only uses:
+
+- Glasses detection
+- Emotion detection
+
+This change ensures compatibility with current Azure Face API requirements.
 
 ## Performance Considerations
 

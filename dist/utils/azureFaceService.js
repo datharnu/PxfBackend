@@ -21,14 +21,7 @@ const faceClient = new cognitiveservices_face_1.FaceClient(credentials, AZURE_FA
 // Face detection options
 const DETECTION_OPTIONS = {
     returnFaceId: true,
-    returnFaceAttributes: [
-        "age",
-        "gender",
-        "smile",
-        "facialHair",
-        "glasses",
-        "emotion",
-    ],
+    returnFaceAttributes: ["glasses", "emotion"],
     detectionModel: "detection_03",
     recognitionModel: "recognition_04",
 };
@@ -54,16 +47,6 @@ class AzureFaceService {
                 },
                 faceAttributes: face.faceAttributes
                     ? {
-                        age: face.faceAttributes.age,
-                        gender: face.faceAttributes.gender,
-                        smile: face.faceAttributes.smile,
-                        facialHair: face.faceAttributes.facialHair
-                            ? {
-                                moustache: face.faceAttributes.facialHair.moustache || 0,
-                                beard: face.faceAttributes.facialHair.beard || 0,
-                                sideburns: face.faceAttributes.facialHair.sideburns || 0,
-                            }
-                            : undefined,
                         glasses: face.faceAttributes.glasses,
                         emotion: face.faceAttributes.emotion
                             ? {
@@ -103,16 +86,6 @@ class AzureFaceService {
                 },
                 faceAttributes: face.faceAttributes
                     ? {
-                        age: face.faceAttributes.age,
-                        gender: face.faceAttributes.gender,
-                        smile: face.faceAttributes.smile,
-                        facialHair: face.faceAttributes.facialHair
-                            ? {
-                                moustache: face.faceAttributes.facialHair.moustache || 0,
-                                beard: face.faceAttributes.facialHair.beard || 0,
-                                sideburns: face.faceAttributes.facialHair.sideburns || 0,
-                            }
-                            : undefined,
                         glasses: face.faceAttributes.glasses,
                         emotion: face.faceAttributes.emotion
                             ? {
