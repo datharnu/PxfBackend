@@ -21,9 +21,8 @@ const faceClient = new FaceClient(credentials, AZURE_FACE_ENDPOINT);
 // Face detection options
 const DETECTION_OPTIONS: FaceModels.FaceDetectWithUrlOptionalParams = {
   returnFaceId: true,
-  returnFaceAttributes: ["glasses", "emotion"],
-  detectionModel: "detection_03",
-  recognitionModel: "recognition_04",
+  detectionModel: "detection_01",
+  recognitionModel: "recognition_01",
 };
 
 // Face identification options
@@ -173,7 +172,7 @@ export class AzureFaceService {
     try {
       await faceClient.personGroup.create(eventId, `Event: ${eventName}`, {
         userData: `Event group for ${eventId}`,
-        recognitionModel: "recognition_04",
+        recognitionModel: "recognition_01",
       });
     } catch (error) {
       console.error("Error creating person group:", error);

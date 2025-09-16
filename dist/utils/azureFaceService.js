@@ -21,9 +21,8 @@ const faceClient = new cognitiveservices_face_1.FaceClient(credentials, AZURE_FA
 // Face detection options
 const DETECTION_OPTIONS = {
     returnFaceId: true,
-    returnFaceAttributes: ["glasses", "emotion"],
-    detectionModel: "detection_03",
-    recognitionModel: "recognition_04",
+    detectionModel: "detection_01",
+    recognitionModel: "recognition_01",
 };
 // Face identification options
 const IDENTIFICATION_OPTIONS = {
@@ -116,7 +115,7 @@ class AzureFaceService {
         try {
             await faceClient.personGroup.create(eventId, `Event: ${eventName}`, {
                 userData: `Event group for ${eventId}`,
-                recognitionModel: "recognition_04",
+                recognitionModel: "recognition_01",
             });
         }
         catch (error) {
