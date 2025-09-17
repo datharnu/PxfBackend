@@ -11,6 +11,35 @@ import NotFoundError from "../errors/notFound";
 import UnAuthorizedError from "../errors/unauthorized";
 import AzureFaceService from "../utils/azureFaceService";
 
+// Test Azure Face API connection
+export const testAzureFaceAPI = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    console.log("Testing Azure Face API connection...");
+    const isConnected = await AzureFaceService.testConnection();
+    
+    if (isConnected) {
+      return res.status(StatusCodes.OK).json({
+        success: true,
+        message: "Azure Face API connection successful",
+        connected: true,
+      });
+    } else {
+      return res.status(StatusCodes.SERVICE_UNAVAILABLE).json({
+        success: false,
+        message: "Azure Face API connection failed",
+        connected: false,
+      });
+    }
+  } catch (error) {
+    console.error("Azure Face API test error:", error);
+    next(error);
+  }
+};
+
 // Enroll user's face for an event
 export const enrollUserFace = async (
   req: Request,

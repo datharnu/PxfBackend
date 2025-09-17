@@ -7,6 +7,8 @@ const express_1 = __importDefault(require("express"));
 const faceManagement_1 = require("../controllers/faceManagement");
 const isAuthenticated_1 = __importDefault(require("../middlewares/isAuthenticated"));
 const router = express_1.default.Router();
+// Test Azure Face API connection
+router.get("/test", faceManagement_1.testAzureFaceAPI);
 // Face enrollment routes
 router.post("/events/:eventId/enroll", isAuthenticated_1.default, faceManagement_1.enrollUserFace);
 router.get("/events/:eventId/profile", isAuthenticated_1.default, faceManagement_1.getUserFaceProfile);

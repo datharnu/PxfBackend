@@ -1,5 +1,6 @@
 import express from "express";
 import {
+  testAzureFaceAPI,
   enrollUserFace,
   getUserFaceProfile,
   deleteUserFaceProfile,
@@ -10,6 +11,9 @@ import {
 import isUserAuthenticated from "../middlewares/isAuthenticated";
 
 const router = express.Router();
+
+// Test Azure Face API connection
+router.get("/test", testAzureFaceAPI);
 
 // Face enrollment routes
 router.post("/events/:eventId/enroll", isUserAuthenticated, enrollUserFace);

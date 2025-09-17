@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getMediaFaceDetections = exports.getEventFaceProfiles = exports.getFaceDetectionStats = exports.deleteUserFaceProfile = exports.getUserFaceProfile = exports.enrollUserFace = void 0;
+exports.getMediaFaceDetections = exports.getEventFaceProfiles = exports.getFaceDetectionStats = exports.deleteUserFaceProfile = exports.getUserFaceProfile = exports.enrollUserFace = exports.testAzureFaceAPI = void 0;
 const http_status_codes_1 = require("http-status-codes");
 const event_1 = __importDefault(require("../models/event"));
 const eventMedia_1 = __importDefault(require("../models/eventMedia"));
@@ -14,6 +14,32 @@ const badRequest_1 = __importDefault(require("../errors/badRequest"));
 const notFound_1 = __importDefault(require("../errors/notFound"));
 const unauthorized_1 = __importDefault(require("../errors/unauthorized"));
 const azureFaceService_1 = __importDefault(require("../utils/azureFaceService"));
+// Test Azure Face API connection
+const testAzureFaceAPI = async (req, res, next) => {
+    try {
+        console.log("Testing Azure Face API connection...");
+        const isConnected = await azureFaceService_1.default.testConnection();
+        if (isConnected) {
+            return res.status(http_status_codes_1.StatusCodes.OK).json({
+                success: true,
+                message: "Azure Face API connection successful",
+                connected: true,
+            });
+        }
+        else {
+            return res.status(http_status_codes_1.StatusCodes.SERVICE_UNAVAILABLE).json({
+                success: false,
+                message: "Azure Face API connection failed",
+                connected: false,
+            });
+        }
+    }
+    catch (error) {
+        console.error("Azure Face API test error:", error);
+        next(error);
+    }
+};
+exports.testAzureFaceAPI = testAzureFaceAPI;
 // Enroll user's face for an event
 const enrollUserFace = async (req, res, next) => {
     try {

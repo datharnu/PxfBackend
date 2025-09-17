@@ -18,11 +18,9 @@ const credentials = new ApiKeyCredentials({
 });
 const faceClient = new FaceClient(credentials, AZURE_FACE_ENDPOINT);
 
-// Face detection options
+// Face detection options - minimal configuration for maximum compatibility
 const DETECTION_OPTIONS: FaceModels.FaceDetectWithUrlOptionalParams = {
   returnFaceId: true,
-  detectionModel: "detection_01",
-  recognitionModel: "recognition_01",
 };
 
 // Face identification options
@@ -65,12 +63,40 @@ export interface FaceIdentificationResult {
 
 export class AzureFaceService {
   /**
+   * Test Azure Face API connection
+   */
+  static async testConnection(): Promise<boolean> {
+    try {
+      console.log("Testing Azure Face API connection...");
+      console.log("Endpoint:", AZURE_FACE_ENDPOINT);
+      console.log("Key present:", !!AZURE_FACE_KEY);
+      
+      // Test with a simple public image
+      const testImageUrl = "https://upload.wikimedia.org/wikipedia/commons/thumb/1/18/Brad_Pitt_2019_by_Glenn_Francis.jpg/256px-Brad_Pitt_2019_by_Glenn_Francis.jpg";
+      
+      const result = await faceClient.face.detectWithUrl(testImageUrl, {
+        returnFaceId: true,
+      });
+      
+      console.log("Azure Face API test successful:", result.length, "faces detected");
+      return true;
+    } catch (error) {
+      console.error("Azure Face API test failed:", error);
+      return false;
+    }
+  }
+
+  /**
    * Detect faces in an image from URL
    */
   static async detectFacesFromUrl(
     imageUrl: string
   ): Promise<FaceDetectionResult[]> {
     try {
+      console.log("Azure Face API - Detecting faces from URL:", imageUrl);
+      console.log("Azure Face API - Detection options:", DETECTION_OPTIONS);
+      console.log("Azure Face API - Endpoint:", AZURE_FACE_ENDPOINT);
+      
       const result = await faceClient.face.detectWithUrl(
         imageUrl,
         DETECTION_OPTIONS
@@ -105,6 +131,13 @@ export class AzureFaceService {
       }));
     } catch (error) {
       console.error("Error detecting faces from URL:", error);
+      console.error("Error details:", {
+        message: error instanceof Error ? error.message : "Unknown error",
+        stack: error instanceof Error ? error.stack : undefined,
+        imageUrl,
+        detectionOptions: DETECTION_OPTIONS,
+        endpoint: AZURE_FACE_ENDPOINT
+      });
       throw new Error(
         `Face detection failed: ${
           error instanceof Error ? error.message : "Unknown error"
@@ -172,7 +205,6 @@ export class AzureFaceService {
     try {
       await faceClient.personGroup.create(eventId, `Event: ${eventName}`, {
         userData: `Event group for ${eventId}`,
-        recognitionModel: "recognition_01",
       });
     } catch (error) {
       console.error("Error creating person group:", error);
