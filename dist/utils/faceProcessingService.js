@@ -283,7 +283,8 @@ class FaceProcessingService {
         // Additional filtering: reject if aspect ratios are too different
         const aspectRatio1 = face1.width / face1.height;
         const aspectRatio2 = face2.width / face2.height;
-        const aspectRatioDiff = Math.abs(aspectRatio1 - aspectRatio2) / Math.max(aspectRatio1, aspectRatio2);
+        const aspectRatioDiff = Math.abs(aspectRatio1 - aspectRatio2) /
+            Math.max(aspectRatio1, aspectRatio2);
         if (aspectRatioDiff > 0.5) {
             console.log(`Face aspect ratio too different: ${aspectRatioDiff.toFixed(3)}, reducing similarity`);
             return finalSimilarity * 0.5; // Reduce similarity for very different aspect ratios
