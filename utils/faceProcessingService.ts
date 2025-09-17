@@ -219,11 +219,14 @@ export class FaceProcessingService {
         console.log(
           `Face detection similarity: ${similarity.toFixed(3)} for media ${
             media.id
-          }`
+          } (${media.fileName})`
         );
+        console.log(`  User face: ${JSON.stringify(userFaceProfile.faceRectangle)}`);
+        console.log(`  Detection face: ${JSON.stringify(detection.faceRectangle)}`);
+        console.log(`  Detection confidence: ${detection.confidence}`);
 
-        // Use a moderate threshold - we'll improve this with manual confirmation later
-        if (similarity > 0.5) {
+        // Use a higher threshold for better accuracy
+        if (similarity > 0.75) {
           // Moderate threshold - may need manual confirmation
           if (!matchingMedia.has(media.id)) {
             matchingMedia.set(media.id, {
@@ -340,7 +343,30 @@ export class FaceProcessingService {
     }
 
     // Combine rectangle similarity with attribute similarity
-    return Math.min(1.0, rectangleSimilarity * 0.7 + attributeSimilarity * 0.3);
+    const finalSimilarity = Math.min(1.0, rectangleSimilarity * 0.8 + attributeSimilarity * 0.2);
+    
+    // Additional filtering: reject if face sizes are too different
+    const area1 = face1.width * face1.height;
+    const area2 = face2.width * face2.height;
+    const sizeRatio = Math.min(area1, area2) / Math.max(area1, area2);
+    
+    // If faces are very different in size, reduce similarity significantly
+    if (sizeRatio < 0.2) {
+      console.log(`Face size ratio too different: ${sizeRatio.toFixed(3)}, reducing similarity`);
+      return finalSimilarity * 0.3; // Significantly reduce similarity for very different sizes
+    }
+    
+    // Additional filtering: reject if aspect ratios are too different
+    const aspectRatio1 = face1.width / face1.height;
+    const aspectRatio2 = face2.width / face2.height;
+    const aspectRatioDiff = Math.abs(aspectRatio1 - aspectRatio2) / Math.max(aspectRatio1, aspectRatio2);
+    
+    if (aspectRatioDiff > 0.5) {
+      console.log(`Face aspect ratio too different: ${aspectRatioDiff.toFixed(3)}, reducing similarity`);
+      return finalSimilarity * 0.5; // Reduce similarity for very different aspect ratios
+    }
+    
+    return finalSimilarity;
   }
 
   /**

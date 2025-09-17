@@ -1,9 +1,11 @@
-import { ImageAnnotatorClient } from '@google-cloud/vision';
-import axios from 'axios';
+import { ImageAnnotatorClient } from "@google-cloud/vision";
+import axios from "axios";
 
 // Google Cloud Vision API configuration
-const GOOGLE_APPLICATION_CREDENTIALS = process.env.GOOGLE_APPLICATION_CREDENTIALS;
-const GOOGLE_APPLICATION_CREDENTIALS_JSON = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
+const GOOGLE_APPLICATION_CREDENTIALS =
+  process.env.GOOGLE_APPLICATION_CREDENTIALS;
+const GOOGLE_APPLICATION_CREDENTIALS_JSON =
+  process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
 
 // Individual credential components for Render
 const GOOGLE_PROJECT_ID = process.env.GOOGLE_PROJECT_ID;
@@ -14,14 +16,24 @@ const GOOGLE_VISION_CLIENT_ID = process.env.GOOGLE_VISION_CLIENT_ID;
 
 // Debug environment variables
 console.log("Google Vision Environment Variables Debug:");
-console.log("GOOGLE_APPLICATION_CREDENTIALS:", !!GOOGLE_APPLICATION_CREDENTIALS);
-console.log("GOOGLE_APPLICATION_CREDENTIALS_JSON:", !!GOOGLE_APPLICATION_CREDENTIALS_JSON);
+console.log(
+  "GOOGLE_APPLICATION_CREDENTIALS:",
+  !!GOOGLE_APPLICATION_CREDENTIALS
+);
+console.log(
+  "GOOGLE_APPLICATION_CREDENTIALS_JSON:",
+  !!GOOGLE_APPLICATION_CREDENTIALS_JSON
+);
 console.log("GOOGLE_PROJECT_ID:", GOOGLE_PROJECT_ID);
 console.log("GOOGLE_PRIVATE_KEY:", !!GOOGLE_PRIVATE_KEY);
 console.log("GOOGLE_CLIENT_EMAIL:", GOOGLE_CLIENT_EMAIL);
 console.log("GOOGLE_VISION_CLIENT_ID:", !!GOOGLE_VISION_CLIENT_ID);
 
-if (!GOOGLE_APPLICATION_CREDENTIALS && !GOOGLE_APPLICATION_CREDENTIALS_JSON && !GOOGLE_PROJECT_ID) {
+if (
+  !GOOGLE_APPLICATION_CREDENTIALS &&
+  !GOOGLE_APPLICATION_CREDENTIALS_JSON &&
+  !GOOGLE_PROJECT_ID
+) {
   throw new Error(
     "Google Vision service account is not configured. Please set GOOGLE_APPLICATION_CREDENTIALS, GOOGLE_APPLICATION_CREDENTIALS_JSON, or individual Google credential environment variables."
   );
@@ -33,10 +45,10 @@ let visionClient: ImageAnnotatorClient;
 if (GOOGLE_PROJECT_ID && GOOGLE_PRIVATE_KEY && GOOGLE_CLIENT_EMAIL) {
   // Use individual environment variables (for Render/production)
   console.log("Using individual Google credentials from environment variables");
-  
+
   // Fix private key format - replace \\n with actual newlines
-  const formattedPrivateKey = GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n');
-  
+  const formattedPrivateKey = GOOGLE_PRIVATE_KEY.replace(/\\n/g, "\n");
+
   const credentials = {
     type: "service_account",
     project_id: GOOGLE_PROJECT_ID,
@@ -47,14 +59,16 @@ if (GOOGLE_PROJECT_ID && GOOGLE_PRIVATE_KEY && GOOGLE_CLIENT_EMAIL) {
     auth_uri: "https://accounts.google.com/o/oauth2/auth",
     token_uri: "https://oauth2.googleapis.com/token",
     auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
-    client_x509_cert_url: `https://www.googleapis.com/robot/v1/metadata/x509/${encodeURIComponent(GOOGLE_CLIENT_EMAIL)}`,
-    universe_domain: "googleapis.com"
+    client_x509_cert_url: `https://www.googleapis.com/robot/v1/metadata/x509/${encodeURIComponent(
+      GOOGLE_CLIENT_EMAIL
+    )}`,
+    universe_domain: "googleapis.com",
   };
-  
+
   console.log("Private key formatted successfully");
   console.log("Project ID:", GOOGLE_PROJECT_ID);
   console.log("Client Email:", GOOGLE_CLIENT_EMAIL);
-  
+
   visionClient = new ImageAnnotatorClient({
     credentials: credentials,
     projectId: GOOGLE_PROJECT_ID,
@@ -64,21 +78,29 @@ if (GOOGLE_PROJECT_ID && GOOGLE_PRIVATE_KEY && GOOGLE_CLIENT_EMAIL) {
   console.log("Using JSON credentials from environment variable");
   try {
     const credentials = JSON.parse(GOOGLE_APPLICATION_CREDENTIALS_JSON);
-    
+
     // Fix private key format in JSON credentials too
     if (credentials.private_key) {
-      credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
+      credentials.private_key = credentials.private_key.replace(/\\n/g, "\n");
     }
-    
+
     visionClient = new ImageAnnotatorClient({
       credentials: credentials,
       projectId: credentials.project_id,
     });
   } catch (error) {
     console.error("Error parsing GOOGLE_APPLICATION_CREDENTIALS_JSON:", error);
-    console.error("JSON string length:", GOOGLE_APPLICATION_CREDENTIALS_JSON.length);
-    console.error("JSON string preview:", GOOGLE_APPLICATION_CREDENTIALS_JSON.substring(0, 100) + "...");
-    throw new Error("Invalid JSON in GOOGLE_APPLICATION_CREDENTIALS_JSON environment variable");
+    console.error(
+      "JSON string length:",
+      GOOGLE_APPLICATION_CREDENTIALS_JSON.length
+    );
+    console.error(
+      "JSON string preview:",
+      GOOGLE_APPLICATION_CREDENTIALS_JSON.substring(0, 100) + "..."
+    );
+    throw new Error(
+      "Invalid JSON in GOOGLE_APPLICATION_CREDENTIALS_JSON environment variable"
+    );
   }
 } else {
   // Use file path (for local development)
@@ -126,14 +148,26 @@ export class GoogleVisionService {
   static async testConnection(): Promise<boolean> {
     try {
       console.log("Testing Google Vision API connection...");
-      console.log("Service account configured:", !!(GOOGLE_APPLICATION_CREDENTIALS || GOOGLE_APPLICATION_CREDENTIALS_JSON || GOOGLE_PROJECT_ID));
-      
+      console.log(
+        "Service account configured:",
+        !!(
+          GOOGLE_APPLICATION_CREDENTIALS ||
+          GOOGLE_APPLICATION_CREDENTIALS_JSON ||
+          GOOGLE_PROJECT_ID
+        )
+      );
+
       // Test with a simple public image
-      const testImageUrl = "https://upload.wikimedia.org/wikipedia/commons/thumb/1/18/Brad_Pitt_2019_by_Glenn_Francis.jpg/256px-Brad_Pitt_2019_by_Glenn_Francis.jpg";
-      
+      const testImageUrl =
+        "https://upload.wikimedia.org/wikipedia/commons/thumb/1/18/Brad_Pitt_2019_by_Glenn_Francis.jpg/256px-Brad_Pitt_2019_by_Glenn_Francis.jpg";
+
       const result = await this.detectFacesFromUrl(testImageUrl);
-      
-      console.log("Google Vision API test successful:", result.length, "faces detected");
+
+      console.log(
+        "Google Vision API test successful:",
+        result.length,
+        "faces detected"
+      );
       return true;
     } catch (error) {
       console.error("Google Vision API test failed:", error);
@@ -144,10 +178,12 @@ export class GoogleVisionService {
   /**
    * Detect faces in an image from URL
    */
-  static async detectFacesFromUrl(imageUrl: string): Promise<FaceDetectionResult[]> {
+  static async detectFacesFromUrl(
+    imageUrl: string
+  ): Promise<FaceDetectionResult[]> {
     try {
       console.log("Google Vision API - Detecting faces from URL:", imageUrl);
-      
+
       const [result] = await visionClient.faceDetection({
         image: {
           source: {
@@ -155,7 +191,7 @@ export class GoogleVisionService {
           },
         },
         imageContext: {
-          languageHints: ['en'],
+          languageHints: ["en"],
         },
       });
 
@@ -167,27 +203,48 @@ export class GoogleVisionService {
         faceRectangle: {
           top: face.boundingPoly?.vertices?.[0]?.y || 0,
           left: face.boundingPoly?.vertices?.[0]?.x || 0,
-          width: (face.boundingPoly?.vertices?.[1]?.x || 0) - (face.boundingPoly?.vertices?.[0]?.x || 0),
-          height: (face.boundingPoly?.vertices?.[2]?.y || 0) - (face.boundingPoly?.vertices?.[0]?.y || 0),
+          width:
+            (face.boundingPoly?.vertices?.[1]?.x || 0) -
+            (face.boundingPoly?.vertices?.[0]?.x || 0),
+          height:
+            (face.boundingPoly?.vertices?.[2]?.y || 0) -
+            (face.boundingPoly?.vertices?.[0]?.y || 0),
         },
         faceAttributes: {
-          glasses: 'NoGlasses', // Google Vision doesn't provide glasses detection in landmarks
-          emotion: face.landmarks ? {
-            anger: 0,
-            contempt: 0,
-            disgust: 0,
-            fear: 0,
-            happiness: face.joyLikelihood === 'VERY_LIKELY' ? 0.9 : 
-                      face.joyLikelihood === 'LIKELY' ? 0.7 :
-                      face.joyLikelihood === 'POSSIBLE' ? 0.5 : 0,
-            neutral: face.sorrowLikelihood === 'VERY_LIKELY' ? 0.9 : 
-                     face.sorrowLikelihood === 'LIKELY' ? 0.7 :
-                     face.sorrowLikelihood === 'POSSIBLE' ? 0.5 : 0,
-            sadness: face.sorrowLikelihood === 'VERY_LIKELY' ? 0.9 : 
-                     face.sorrowLikelihood === 'LIKELY' ? 0.7 :
-                     face.sorrowLikelihood === 'POSSIBLE' ? 0.5 : 0,
-            surprise: 0,
-          } : undefined,
+          glasses: "NoGlasses", // Google Vision doesn't provide glasses detection in landmarks
+          emotion: face.landmarks
+            ? {
+                anger: 0,
+                contempt: 0,
+                disgust: 0,
+                fear: 0,
+                happiness:
+                  face.joyLikelihood === "VERY_LIKELY"
+                    ? 0.9
+                    : face.joyLikelihood === "LIKELY"
+                    ? 0.7
+                    : face.joyLikelihood === "POSSIBLE"
+                    ? 0.5
+                    : 0,
+                neutral:
+                  face.sorrowLikelihood === "VERY_LIKELY"
+                    ? 0.9
+                    : face.sorrowLikelihood === "LIKELY"
+                    ? 0.7
+                    : face.sorrowLikelihood === "POSSIBLE"
+                    ? 0.5
+                    : 0,
+                sadness:
+                  face.sorrowLikelihood === "VERY_LIKELY"
+                    ? 0.9
+                    : face.sorrowLikelihood === "LIKELY"
+                    ? 0.7
+                    : face.sorrowLikelihood === "POSSIBLE"
+                    ? 0.5
+                    : 0,
+                surprise: 0,
+              }
+            : undefined,
         },
         confidence: face.detectionConfidence || 1.0,
         landmarks: face.landmarks || [],
@@ -198,7 +255,11 @@ export class GoogleVisionService {
         message: error instanceof Error ? error.message : "Unknown error",
         stack: error instanceof Error ? error.stack : undefined,
         imageUrl,
-        serviceAccount: !!(GOOGLE_APPLICATION_CREDENTIALS || GOOGLE_APPLICATION_CREDENTIALS_JSON || GOOGLE_PROJECT_ID),
+        serviceAccount: !!(
+          GOOGLE_APPLICATION_CREDENTIALS ||
+          GOOGLE_APPLICATION_CREDENTIALS_JSON ||
+          GOOGLE_PROJECT_ID
+        ),
       });
       throw new Error(
         `Face detection failed: ${
@@ -211,16 +272,18 @@ export class GoogleVisionService {
   /**
    * Detect faces in an image from buffer
    */
-  static async detectFacesFromBuffer(imageBuffer: Buffer): Promise<FaceDetectionResult[]> {
+  static async detectFacesFromBuffer(
+    imageBuffer: Buffer
+  ): Promise<FaceDetectionResult[]> {
     try {
       console.log("Google Vision API - Detecting faces from buffer");
-      
+
       const [result] = await visionClient.faceDetection({
         image: {
           content: imageBuffer,
         },
         imageContext: {
-          languageHints: ['en'],
+          languageHints: ["en"],
         },
       });
 
@@ -232,27 +295,48 @@ export class GoogleVisionService {
         faceRectangle: {
           top: face.boundingPoly?.vertices?.[0]?.y || 0,
           left: face.boundingPoly?.vertices?.[0]?.x || 0,
-          width: (face.boundingPoly?.vertices?.[1]?.x || 0) - (face.boundingPoly?.vertices?.[0]?.x || 0),
-          height: (face.boundingPoly?.vertices?.[2]?.y || 0) - (face.boundingPoly?.vertices?.[0]?.y || 0),
+          width:
+            (face.boundingPoly?.vertices?.[1]?.x || 0) -
+            (face.boundingPoly?.vertices?.[0]?.x || 0),
+          height:
+            (face.boundingPoly?.vertices?.[2]?.y || 0) -
+            (face.boundingPoly?.vertices?.[0]?.y || 0),
         },
         faceAttributes: {
-          glasses: 'NoGlasses', // Google Vision doesn't provide glasses detection in landmarks
-          emotion: face.landmarks ? {
-            anger: 0,
-            contempt: 0,
-            disgust: 0,
-            fear: 0,
-            happiness: face.joyLikelihood === 'VERY_LIKELY' ? 0.9 : 
-                      face.joyLikelihood === 'LIKELY' ? 0.7 :
-                      face.joyLikelihood === 'POSSIBLE' ? 0.5 : 0,
-            neutral: face.sorrowLikelihood === 'VERY_LIKELY' ? 0.9 : 
-                     face.sorrowLikelihood === 'LIKELY' ? 0.7 :
-                     face.sorrowLikelihood === 'POSSIBLE' ? 0.5 : 0,
-            sadness: face.sorrowLikelihood === 'VERY_LIKELY' ? 0.9 : 
-                     face.sorrowLikelihood === 'LIKELY' ? 0.7 :
-                     face.sorrowLikelihood === 'POSSIBLE' ? 0.5 : 0,
-            surprise: 0,
-          } : undefined,
+          glasses: "NoGlasses", // Google Vision doesn't provide glasses detection in landmarks
+          emotion: face.landmarks
+            ? {
+                anger: 0,
+                contempt: 0,
+                disgust: 0,
+                fear: 0,
+                happiness:
+                  face.joyLikelihood === "VERY_LIKELY"
+                    ? 0.9
+                    : face.joyLikelihood === "LIKELY"
+                    ? 0.7
+                    : face.joyLikelihood === "POSSIBLE"
+                    ? 0.5
+                    : 0,
+                neutral:
+                  face.sorrowLikelihood === "VERY_LIKELY"
+                    ? 0.9
+                    : face.sorrowLikelihood === "LIKELY"
+                    ? 0.7
+                    : face.sorrowLikelihood === "POSSIBLE"
+                    ? 0.5
+                    : 0,
+                sadness:
+                  face.sorrowLikelihood === "VERY_LIKELY"
+                    ? 0.9
+                    : face.sorrowLikelihood === "LIKELY"
+                    ? 0.7
+                    : face.sorrowLikelihood === "POSSIBLE"
+                    ? 0.5
+                    : 0,
+                surprise: 0,
+              }
+            : undefined,
         },
         confidence: face.detectionConfidence || 1.0,
         landmarks: face.landmarks || [],
@@ -270,10 +354,13 @@ export class GoogleVisionService {
   /**
    * Compare two faces for similarity
    */
-  static async compareFaces(imageUrl1: string, imageUrl2: string): Promise<FaceSimilarityResult[]> {
+  static async compareFaces(
+    imageUrl1: string,
+    imageUrl2: string
+  ): Promise<FaceSimilarityResult[]> {
     try {
       console.log("Google Vision API - Comparing faces");
-      
+
       const [result] = await visionClient.faceDetection({
         image: {
           source: {
@@ -283,7 +370,7 @@ export class GoogleVisionService {
       });
 
       const faces1 = result.faceAnnotations || [];
-      
+
       const [result2] = await visionClient.faceDetection({
         image: {
           source: {
@@ -297,7 +384,7 @@ export class GoogleVisionService {
       // For now, return a simple comparison based on face landmarks
       // In a real implementation, you'd use Google's face comparison features
       const similarities: FaceSimilarityResult[] = [];
-      
+
       faces1.forEach((face1, index1) => {
         faces2.forEach((face2, index2) => {
           const similarity = this.calculateFaceSimilarity(face1, face2);
@@ -338,7 +425,7 @@ export class GoogleVisionService {
       if (landmark2) {
         const distance = Math.sqrt(
           Math.pow(landmark1.position.x - landmark2.position.x, 2) +
-          Math.pow(landmark1.position.y - landmark2.position.y, 2)
+            Math.pow(landmark1.position.y - landmark2.position.y, 2)
         );
         const similarity = Math.max(0, 1 - distance / 100); // Normalize distance
         totalSimilarity += similarity;
@@ -355,7 +442,7 @@ export class GoogleVisionService {
   static async downloadImage(imageUrl: string): Promise<Buffer> {
     try {
       const response = await axios.get(imageUrl, {
-        responseType: 'arraybuffer',
+        responseType: "arraybuffer",
         timeout: 30000, // 30 seconds timeout
         maxContentLength: 10 * 1024 * 1024, // 10MB max
       });

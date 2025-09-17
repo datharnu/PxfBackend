@@ -23,7 +23,9 @@ console.log("GOOGLE_PROJECT_ID:", GOOGLE_PROJECT_ID);
 console.log("GOOGLE_PRIVATE_KEY:", !!GOOGLE_PRIVATE_KEY);
 console.log("GOOGLE_CLIENT_EMAIL:", GOOGLE_CLIENT_EMAIL);
 console.log("GOOGLE_VISION_CLIENT_ID:", !!GOOGLE_VISION_CLIENT_ID);
-if (!GOOGLE_APPLICATION_CREDENTIALS && !GOOGLE_APPLICATION_CREDENTIALS_JSON && !GOOGLE_PROJECT_ID) {
+if (!GOOGLE_APPLICATION_CREDENTIALS &&
+    !GOOGLE_APPLICATION_CREDENTIALS_JSON &&
+    !GOOGLE_PROJECT_ID) {
     throw new Error("Google Vision service account is not configured. Please set GOOGLE_APPLICATION_CREDENTIALS, GOOGLE_APPLICATION_CREDENTIALS_JSON, or individual Google credential environment variables.");
 }
 // Initialize Google Vision client
@@ -32,7 +34,7 @@ if (GOOGLE_PROJECT_ID && GOOGLE_PRIVATE_KEY && GOOGLE_CLIENT_EMAIL) {
     // Use individual environment variables (for Render/production)
     console.log("Using individual Google credentials from environment variables");
     // Fix private key format - replace \\n with actual newlines
-    const formattedPrivateKey = GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n');
+    const formattedPrivateKey = GOOGLE_PRIVATE_KEY.replace(/\\n/g, "\n");
     const credentials = {
         type: "service_account",
         project_id: GOOGLE_PROJECT_ID,
@@ -44,7 +46,7 @@ if (GOOGLE_PROJECT_ID && GOOGLE_PRIVATE_KEY && GOOGLE_CLIENT_EMAIL) {
         token_uri: "https://oauth2.googleapis.com/token",
         auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
         client_x509_cert_url: `https://www.googleapis.com/robot/v1/metadata/x509/${encodeURIComponent(GOOGLE_CLIENT_EMAIL)}`,
-        universe_domain: "googleapis.com"
+        universe_domain: "googleapis.com",
     };
     console.log("Private key formatted successfully");
     console.log("Project ID:", GOOGLE_PROJECT_ID);
@@ -61,7 +63,7 @@ else if (GOOGLE_APPLICATION_CREDENTIALS_JSON) {
         const credentials = JSON.parse(GOOGLE_APPLICATION_CREDENTIALS_JSON);
         // Fix private key format in JSON credentials too
         if (credentials.private_key) {
-            credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
+            credentials.private_key = credentials.private_key.replace(/\\n/g, "\n");
         }
         visionClient = new vision_1.ImageAnnotatorClient({
             credentials: credentials,
@@ -89,7 +91,9 @@ class GoogleVisionService {
     static async testConnection() {
         try {
             console.log("Testing Google Vision API connection...");
-            console.log("Service account configured:", !!(GOOGLE_APPLICATION_CREDENTIALS || GOOGLE_APPLICATION_CREDENTIALS_JSON || GOOGLE_PROJECT_ID));
+            console.log("Service account configured:", !!(GOOGLE_APPLICATION_CREDENTIALS ||
+                GOOGLE_APPLICATION_CREDENTIALS_JSON ||
+                GOOGLE_PROJECT_ID));
             // Test with a simple public image
             const testImageUrl = "https://upload.wikimedia.org/wikipedia/commons/thumb/1/18/Brad_Pitt_2019_by_Glenn_Francis.jpg/256px-Brad_Pitt_2019_by_Glenn_Francis.jpg";
             const result = await this.detectFacesFromUrl(testImageUrl);
@@ -114,7 +118,7 @@ class GoogleVisionService {
                     },
                 },
                 imageContext: {
-                    languageHints: ['en'],
+                    languageHints: ["en"],
                 },
             });
             const faces = result.faceAnnotations || [];
@@ -124,27 +128,43 @@ class GoogleVisionService {
                 faceRectangle: {
                     top: face.boundingPoly?.vertices?.[0]?.y || 0,
                     left: face.boundingPoly?.vertices?.[0]?.x || 0,
-                    width: (face.boundingPoly?.vertices?.[1]?.x || 0) - (face.boundingPoly?.vertices?.[0]?.x || 0),
-                    height: (face.boundingPoly?.vertices?.[2]?.y || 0) - (face.boundingPoly?.vertices?.[0]?.y || 0),
+                    width: (face.boundingPoly?.vertices?.[1]?.x || 0) -
+                        (face.boundingPoly?.vertices?.[0]?.x || 0),
+                    height: (face.boundingPoly?.vertices?.[2]?.y || 0) -
+                        (face.boundingPoly?.vertices?.[0]?.y || 0),
                 },
                 faceAttributes: {
-                    glasses: 'NoGlasses', // Google Vision doesn't provide glasses detection in landmarks
-                    emotion: face.landmarks ? {
-                        anger: 0,
-                        contempt: 0,
-                        disgust: 0,
-                        fear: 0,
-                        happiness: face.joyLikelihood === 'VERY_LIKELY' ? 0.9 :
-                            face.joyLikelihood === 'LIKELY' ? 0.7 :
-                                face.joyLikelihood === 'POSSIBLE' ? 0.5 : 0,
-                        neutral: face.sorrowLikelihood === 'VERY_LIKELY' ? 0.9 :
-                            face.sorrowLikelihood === 'LIKELY' ? 0.7 :
-                                face.sorrowLikelihood === 'POSSIBLE' ? 0.5 : 0,
-                        sadness: face.sorrowLikelihood === 'VERY_LIKELY' ? 0.9 :
-                            face.sorrowLikelihood === 'LIKELY' ? 0.7 :
-                                face.sorrowLikelihood === 'POSSIBLE' ? 0.5 : 0,
-                        surprise: 0,
-                    } : undefined,
+                    glasses: "NoGlasses", // Google Vision doesn't provide glasses detection in landmarks
+                    emotion: face.landmarks
+                        ? {
+                            anger: 0,
+                            contempt: 0,
+                            disgust: 0,
+                            fear: 0,
+                            happiness: face.joyLikelihood === "VERY_LIKELY"
+                                ? 0.9
+                                : face.joyLikelihood === "LIKELY"
+                                    ? 0.7
+                                    : face.joyLikelihood === "POSSIBLE"
+                                        ? 0.5
+                                        : 0,
+                            neutral: face.sorrowLikelihood === "VERY_LIKELY"
+                                ? 0.9
+                                : face.sorrowLikelihood === "LIKELY"
+                                    ? 0.7
+                                    : face.sorrowLikelihood === "POSSIBLE"
+                                        ? 0.5
+                                        : 0,
+                            sadness: face.sorrowLikelihood === "VERY_LIKELY"
+                                ? 0.9
+                                : face.sorrowLikelihood === "LIKELY"
+                                    ? 0.7
+                                    : face.sorrowLikelihood === "POSSIBLE"
+                                        ? 0.5
+                                        : 0,
+                            surprise: 0,
+                        }
+                        : undefined,
                 },
                 confidence: face.detectionConfidence || 1.0,
                 landmarks: face.landmarks || [],
@@ -156,7 +176,9 @@ class GoogleVisionService {
                 message: error instanceof Error ? error.message : "Unknown error",
                 stack: error instanceof Error ? error.stack : undefined,
                 imageUrl,
-                serviceAccount: !!(GOOGLE_APPLICATION_CREDENTIALS || GOOGLE_APPLICATION_CREDENTIALS_JSON || GOOGLE_PROJECT_ID),
+                serviceAccount: !!(GOOGLE_APPLICATION_CREDENTIALS ||
+                    GOOGLE_APPLICATION_CREDENTIALS_JSON ||
+                    GOOGLE_PROJECT_ID),
             });
             throw new Error(`Face detection failed: ${error instanceof Error ? error.message : "Unknown error"}`);
         }
@@ -172,7 +194,7 @@ class GoogleVisionService {
                     content: imageBuffer,
                 },
                 imageContext: {
-                    languageHints: ['en'],
+                    languageHints: ["en"],
                 },
             });
             const faces = result.faceAnnotations || [];
@@ -182,27 +204,43 @@ class GoogleVisionService {
                 faceRectangle: {
                     top: face.boundingPoly?.vertices?.[0]?.y || 0,
                     left: face.boundingPoly?.vertices?.[0]?.x || 0,
-                    width: (face.boundingPoly?.vertices?.[1]?.x || 0) - (face.boundingPoly?.vertices?.[0]?.x || 0),
-                    height: (face.boundingPoly?.vertices?.[2]?.y || 0) - (face.boundingPoly?.vertices?.[0]?.y || 0),
+                    width: (face.boundingPoly?.vertices?.[1]?.x || 0) -
+                        (face.boundingPoly?.vertices?.[0]?.x || 0),
+                    height: (face.boundingPoly?.vertices?.[2]?.y || 0) -
+                        (face.boundingPoly?.vertices?.[0]?.y || 0),
                 },
                 faceAttributes: {
-                    glasses: 'NoGlasses', // Google Vision doesn't provide glasses detection in landmarks
-                    emotion: face.landmarks ? {
-                        anger: 0,
-                        contempt: 0,
-                        disgust: 0,
-                        fear: 0,
-                        happiness: face.joyLikelihood === 'VERY_LIKELY' ? 0.9 :
-                            face.joyLikelihood === 'LIKELY' ? 0.7 :
-                                face.joyLikelihood === 'POSSIBLE' ? 0.5 : 0,
-                        neutral: face.sorrowLikelihood === 'VERY_LIKELY' ? 0.9 :
-                            face.sorrowLikelihood === 'LIKELY' ? 0.7 :
-                                face.sorrowLikelihood === 'POSSIBLE' ? 0.5 : 0,
-                        sadness: face.sorrowLikelihood === 'VERY_LIKELY' ? 0.9 :
-                            face.sorrowLikelihood === 'LIKELY' ? 0.7 :
-                                face.sorrowLikelihood === 'POSSIBLE' ? 0.5 : 0,
-                        surprise: 0,
-                    } : undefined,
+                    glasses: "NoGlasses", // Google Vision doesn't provide glasses detection in landmarks
+                    emotion: face.landmarks
+                        ? {
+                            anger: 0,
+                            contempt: 0,
+                            disgust: 0,
+                            fear: 0,
+                            happiness: face.joyLikelihood === "VERY_LIKELY"
+                                ? 0.9
+                                : face.joyLikelihood === "LIKELY"
+                                    ? 0.7
+                                    : face.joyLikelihood === "POSSIBLE"
+                                        ? 0.5
+                                        : 0,
+                            neutral: face.sorrowLikelihood === "VERY_LIKELY"
+                                ? 0.9
+                                : face.sorrowLikelihood === "LIKELY"
+                                    ? 0.7
+                                    : face.sorrowLikelihood === "POSSIBLE"
+                                        ? 0.5
+                                        : 0,
+                            sadness: face.sorrowLikelihood === "VERY_LIKELY"
+                                ? 0.9
+                                : face.sorrowLikelihood === "LIKELY"
+                                    ? 0.7
+                                    : face.sorrowLikelihood === "POSSIBLE"
+                                        ? 0.5
+                                        : 0,
+                            surprise: 0,
+                        }
+                        : undefined,
                 },
                 confidence: face.detectionConfidence || 1.0,
                 landmarks: face.landmarks || [],
@@ -284,7 +322,7 @@ class GoogleVisionService {
     static async downloadImage(imageUrl) {
         try {
             const response = await axios_1.default.get(imageUrl, {
-                responseType: 'arraybuffer',
+                responseType: "arraybuffer",
                 timeout: 30000, // 30 seconds timeout
                 maxContentLength: 10 * 1024 * 1024, // 10MB max
             });
