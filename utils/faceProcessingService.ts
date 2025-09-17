@@ -158,17 +158,31 @@ export class FaceProcessingService {
 
   /**
    * Get media with faces for a specific user in an event
+   * Uses custom face matching for detection-only mode
    */
   static async getMediaWithUserFaces(
     eventId: string,
     userId: string
   ): Promise<any[]> {
     try {
-      // Find all face detections where the user is identified
+      // Get user's face profile for this event
+      const userFaceProfile = await UserFaceProfile.findOne({
+        where: {
+          eventId,
+          userId,
+          isActive: true,
+        },
+      });
+
+      if (!userFaceProfile) {
+        console.log("No face profile found for user:", userId);
+        return [];
+      }
+
+      // Get all face detections in this event
       const faceDetections = await FaceDetection.findAll({
         where: {
           eventId,
-          identifiedUserId: userId,
           isActive: true,
         },
         include: [
@@ -187,34 +201,74 @@ export class FaceProcessingService {
         order: [["createdAt", "DESC"]],
       });
 
-      // Group by media to avoid duplicates
-      const mediaMap = new Map();
-      for (const detection of faceDetections) {
+      // Custom face matching based on face rectangle similarity
+      const matchingMedia = new Map();
+      
+      faceDetections.forEach((detection) => {
         const media = detection.media;
-        if (media && !mediaMap.has(media.id)) {
-          mediaMap.set(media.id, {
-            ...media.toJSON(),
-            faceDetections: [],
-          });
-        }
+        if (!media) return;
 
-        if (media) {
-          mediaMap.get(media.id).faceDetections.push({
+        // Calculate face rectangle similarity
+        const similarity = this.calculateFaceSimilarity(
+          userFaceProfile.faceRectangle,
+          detection.faceRectangle
+        );
+
+        // If similarity is above threshold, consider it a match
+        if (similarity > 0.7) { // 70% similarity threshold
+          if (!matchingMedia.has(media.id)) {
+            matchingMedia.set(media.id, {
+              ...media.toJSON(),
+              faceDetections: [],
+            });
+          }
+          
+          matchingMedia.get(media.id).faceDetections.push({
             id: detection.id,
             faceId: detection.faceId,
             faceRectangle: detection.faceRectangle,
             confidence: detection.confidence,
             faceAttributes: detection.faceAttributes,
+            similarity: similarity,
             createdAt: detection.createdAt,
           });
         }
-      }
+      });
 
-      return Array.from(mediaMap.values());
+      return Array.from(matchingMedia.values());
     } catch (error) {
       console.error("Error getting media with user faces:", error);
       throw error;
     }
+  }
+
+  /**
+   * Calculate face rectangle similarity
+   */
+  private static calculateFaceSimilarity(
+    face1: any,
+    face2: any
+  ): number {
+    if (!face1 || !face2) return 0;
+
+    // Calculate area similarity
+    const area1 = face1.width * face1.height;
+    const area2 = face2.width * face2.height;
+    const areaSimilarity = 1 - Math.abs(area1 - area2) / Math.max(area1, area2);
+
+    // Calculate position similarity (normalized)
+    const positionSimilarity = 1 - (
+      Math.abs(face1.left - face2.left) + 
+      Math.abs(face1.top - face2.top)
+    ) / (Math.max(face1.width, face2.width) + Math.max(face1.height, face2.height));
+
+    // Calculate aspect ratio similarity
+    const aspectRatio1 = face1.width / face1.height;
+    const aspectRatio2 = face2.width / face2.height;
+    const aspectRatioSimilarity = 1 - Math.abs(aspectRatio1 - aspectRatio2) / Math.max(aspectRatio1, aspectRatio2);
+
+    // Weighted average
+    return (areaSimilarity * 0.4 + positionSimilarity * 0.3 + aspectRatioSimilarity * 0.3);
   }
 
   /**
