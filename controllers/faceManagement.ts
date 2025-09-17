@@ -208,7 +208,7 @@ export const enrollUserFace = async (
 
     return res.status(StatusCodes.CREATED).json({
       success: true,
-      message: "Face enrolled successfully (detection only)",
+      message: "Face enrolled successfully using Google Vision API",
       faceProfile: {
         id: faceProfile.id,
         userId: faceProfile.userId,
@@ -218,7 +218,7 @@ export const enrollUserFace = async (
         createdAt: faceProfile.createdAt,
       },
       trainingStatus:
-        "Face detection enabled. Note: Face identification requires Azure approval for Identification/Verification features.",
+        "Face detection enabled using Google Vision API. Face matching uses custom algorithm.",
     });
   } catch (error) {
     console.error("Face enrollment error:", error);
