@@ -2,18 +2,18 @@ import { ImageAnnotatorClient } from '@google-cloud/vision';
 import axios from 'axios';
 
 // Google Cloud Vision API configuration
-const GOOGLE_VISION_API_KEY = process.env.GOOGLE_VISION_API_KEY;
+const GOOGLE_APPLICATION_CREDENTIALS = process.env.GOOGLE_APPLICATION_CREDENTIALS;
 
-if (!GOOGLE_VISION_API_KEY) {
+if (!GOOGLE_APPLICATION_CREDENTIALS) {
   throw new Error(
-    "Google Vision API key is not configured. Please set GOOGLE_VISION_API_KEY environment variable."
+    "Google Vision service account is not configured. Please set GOOGLE_APPLICATION_CREDENTIALS environment variable."
   );
 }
 
 // Initialize Google Vision client
 const visionClient = new ImageAnnotatorClient({
-  keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS, // Optional: for service account
-  apiKey: GOOGLE_VISION_API_KEY,
+  keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS, // Service account JSON file path
+  // apiKey: GOOGLE_VISION_API_KEY, // Not needed when using service account
 });
 
 export interface FaceDetectionResult {
@@ -54,7 +54,7 @@ export class GoogleVisionService {
   static async testConnection(): Promise<boolean> {
     try {
       console.log("Testing Google Vision API connection...");
-      console.log("API Key present:", !!GOOGLE_VISION_API_KEY);
+      console.log("Service account file present:", !!GOOGLE_APPLICATION_CREDENTIALS);
       
       // Test with a simple public image
       const testImageUrl = "https://upload.wikimedia.org/wikipedia/commons/thumb/1/18/Brad_Pitt_2019_by_Glenn_Francis.jpg/256px-Brad_Pitt_2019_by_Glenn_Francis.jpg";
@@ -126,7 +126,7 @@ export class GoogleVisionService {
         message: error instanceof Error ? error.message : "Unknown error",
         stack: error instanceof Error ? error.stack : undefined,
         imageUrl,
-        apiKey: !!GOOGLE_VISION_API_KEY,
+        serviceAccount: !!GOOGLE_APPLICATION_CREDENTIALS,
       });
       throw new Error(
         `Face detection failed: ${

@@ -55,8 +55,7 @@ CLOUDINARY_API_SECRET=your-cloudinary-api-secret
 ### Google Cloud Vision API Configuration
 
 ```env
-GOOGLE_VISION_API_KEY=your-google-vision-api-key
-GOOGLE_APPLICATION_CREDENTIALS=path/to/service-account-key.json
+GOOGLE_APPLICATION_CREDENTIALS=./google-service-account.json
 ```
 
 ### Email Configuration (Optional)

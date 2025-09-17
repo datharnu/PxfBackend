@@ -20,7 +20,7 @@ export const testGoogleVisionAPI = async (
   try {
     console.log("Testing Google Vision API connection...");
     const isConnected = await GoogleVisionService.testConnection();
-    
+
     if (isConnected) {
       return res.status(StatusCodes.OK).json({
         success: true,
@@ -170,7 +170,9 @@ export const enrollUserFace = async (
     }
 
     // Validate image URL
-    const isValidUrl = await GoogleVisionService.validateImageUrl(media.mediaUrl);
+    const isValidUrl = await GoogleVisionService.validateImageUrl(
+      media.mediaUrl
+    );
     if (!isValidUrl) {
       throw new BadRequestError("Invalid or inaccessible media URL");
     }

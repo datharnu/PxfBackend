@@ -1,3 +1,7 @@
 .env
 .env
 .env
+
+# Google Cloud Service Account
+google-service-account.json
+*.json
