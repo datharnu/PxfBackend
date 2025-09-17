@@ -8,14 +8,25 @@ const vision_1 = require("@google-cloud/vision");
 const axios_1 = __importDefault(require("axios"));
 // Google Cloud Vision API configuration
 const GOOGLE_APPLICATION_CREDENTIALS = process.env.GOOGLE_APPLICATION_CREDENTIALS;
-if (!GOOGLE_APPLICATION_CREDENTIALS) {
-    throw new Error("Google Vision service account is not configured. Please set GOOGLE_APPLICATION_CREDENTIALS environment variable.");
+const GOOGLE_APPLICATION_CREDENTIALS_JSON = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
+if (!GOOGLE_APPLICATION_CREDENTIALS && !GOOGLE_APPLICATION_CREDENTIALS_JSON) {
+    throw new Error("Google Vision service account is not configured. Please set GOOGLE_APPLICATION_CREDENTIALS or GOOGLE_APPLICATION_CREDENTIALS_JSON environment variable.");
 }
 // Initialize Google Vision client
-const visionClient = new vision_1.ImageAnnotatorClient({
-    keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS, // Service account JSON file path
-    // apiKey: GOOGLE_VISION_API_KEY, // Not needed when using service account
-});
+let visionClient;
+if (GOOGLE_APPLICATION_CREDENTIALS_JSON) {
+    // Use JSON string from environment variable (for Render/production)
+    const credentials = JSON.parse(GOOGLE_APPLICATION_CREDENTIALS_JSON);
+    visionClient = new vision_1.ImageAnnotatorClient({
+        credentials: credentials,
+    });
+}
+else {
+    // Use file path (for local development)
+    visionClient = new vision_1.ImageAnnotatorClient({
+        keyFilename: GOOGLE_APPLICATION_CREDENTIALS,
+    });
+}
 class GoogleVisionService {
     /**
      * Test Google Vision API connection
@@ -23,7 +34,7 @@ class GoogleVisionService {
     static async testConnection() {
         try {
             console.log("Testing Google Vision API connection...");
-            console.log("Service account file present:", !!GOOGLE_APPLICATION_CREDENTIALS);
+            console.log("Service account configured:", !!(GOOGLE_APPLICATION_CREDENTIALS || GOOGLE_APPLICATION_CREDENTIALS_JSON));
             // Test with a simple public image
             const testImageUrl = "https://upload.wikimedia.org/wikipedia/commons/thumb/1/18/Brad_Pitt_2019_by_Glenn_Francis.jpg/256px-Brad_Pitt_2019_by_Glenn_Francis.jpg";
             const result = await this.detectFacesFromUrl(testImageUrl);
@@ -90,7 +101,7 @@ class GoogleVisionService {
                 message: error instanceof Error ? error.message : "Unknown error",
                 stack: error instanceof Error ? error.stack : undefined,
                 imageUrl,
-                serviceAccount: !!GOOGLE_APPLICATION_CREDENTIALS,
+                serviceAccount: !!(GOOGLE_APPLICATION_CREDENTIALS || GOOGLE_APPLICATION_CREDENTIALS_JSON),
             });
             throw new Error(`Face detection failed: ${error instanceof Error ? error.message : "Unknown error"}`);
         }
