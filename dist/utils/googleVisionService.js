@@ -14,7 +14,7 @@ const GOOGLE_PROJECT_ID = process.env.GOOGLE_PROJECT_ID;
 const GOOGLE_PRIVATE_KEY_ID = process.env.GOOGLE_PRIVATE_KEY_ID;
 const GOOGLE_PRIVATE_KEY = process.env.GOOGLE_PRIVATE_KEY;
 const GOOGLE_CLIENT_EMAIL = process.env.GOOGLE_CLIENT_EMAIL;
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+const GOOGLE_VISION_CLIENT_ID = process.env.GOOGLE_VISION_CLIENT_ID;
 // Debug environment variables
 console.log("Google Vision Environment Variables Debug:");
 console.log("GOOGLE_APPLICATION_CREDENTIALS:", !!GOOGLE_APPLICATION_CREDENTIALS);
@@ -22,6 +22,7 @@ console.log("GOOGLE_APPLICATION_CREDENTIALS_JSON:", !!GOOGLE_APPLICATION_CREDENT
 console.log("GOOGLE_PROJECT_ID:", !!GOOGLE_PROJECT_ID);
 console.log("GOOGLE_PRIVATE_KEY:", !!GOOGLE_PRIVATE_KEY);
 console.log("GOOGLE_CLIENT_EMAIL:", !!GOOGLE_CLIENT_EMAIL);
+console.log("GOOGLE_VISION_CLIENT_ID:", !!GOOGLE_VISION_CLIENT_ID);
 if (!GOOGLE_APPLICATION_CREDENTIALS && !GOOGLE_APPLICATION_CREDENTIALS_JSON && !GOOGLE_PROJECT_ID) {
     throw new Error("Google Vision service account is not configured. Please set GOOGLE_APPLICATION_CREDENTIALS, GOOGLE_APPLICATION_CREDENTIALS_JSON, or individual Google credential environment variables.");
 }
@@ -36,7 +37,7 @@ if (GOOGLE_PROJECT_ID && GOOGLE_PRIVATE_KEY && GOOGLE_CLIENT_EMAIL) {
         private_key_id: GOOGLE_PRIVATE_KEY_ID,
         private_key: GOOGLE_PRIVATE_KEY,
         client_email: GOOGLE_CLIENT_EMAIL,
-        client_id: GOOGLE_CLIENT_ID,
+        client_id: GOOGLE_VISION_CLIENT_ID,
         auth_uri: "https://accounts.google.com/o/oauth2/auth",
         token_uri: "https://oauth2.googleapis.com/token",
         auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
