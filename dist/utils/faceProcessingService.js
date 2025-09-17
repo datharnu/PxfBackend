@@ -174,7 +174,8 @@ class FaceProcessingService {
                 const similarity = this.calculateFaceSimilarity(userFaceProfile.faceRectangle, detection.faceRectangle);
                 console.log(`Face detection similarity: ${similarity.toFixed(3)} for media ${media.id}`);
                 // For debugging, let's include all faces for now
-                if (similarity > 0.1) { // Very low threshold to see all matches
+                if (similarity > 0.1) {
+                    // Very low threshold to see all matches
                     if (!matchingMedia.has(media.id)) {
                         matchingMedia.set(media.id, {
                             ...media.toJSON(),

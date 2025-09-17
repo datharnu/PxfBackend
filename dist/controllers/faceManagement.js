@@ -76,12 +76,14 @@ const debugFaceDetections = async (req, res, next) => {
             message: "Face detection debug info",
             debug: {
                 totalFaceDetections: faceDetections.length,
-                userFaceProfile: userFaceProfile ? {
-                    id: userFaceProfile.id,
-                    faceRectangle: userFaceProfile.faceRectangle,
-                    enrollmentConfidence: userFaceProfile.enrollmentConfidence,
-                } : null,
-                faceDetections: faceDetections.map(detection => ({
+                userFaceProfile: userFaceProfile
+                    ? {
+                        id: userFaceProfile.id,
+                        faceRectangle: userFaceProfile.faceRectangle,
+                        enrollmentConfidence: userFaceProfile.enrollmentConfidence,
+                    }
+                    : null,
+                faceDetections: faceDetections.map((detection) => ({
                     id: detection.id,
                     faceId: detection.faceId,
                     faceRectangle: detection.faceRectangle,

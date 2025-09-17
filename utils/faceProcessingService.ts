@@ -203,10 +203,12 @@ export class FaceProcessingService {
 
       // For now, return all media with faces (we'll improve matching later)
       const matchingMedia = new Map();
-      
-      console.log(`Found ${faceDetections.length} face detections for event ${eventId}`);
+
+      console.log(
+        `Found ${faceDetections.length} face detections for event ${eventId}`
+      );
       console.log(`User face profile:`, userFaceProfile.faceRectangle);
-      
+
       faceDetections.forEach((detection) => {
         const media = detection.media;
         if (!media) return;
@@ -217,17 +219,22 @@ export class FaceProcessingService {
           detection.faceRectangle
         );
 
-        console.log(`Face detection similarity: ${similarity.toFixed(3)} for media ${media.id}`);
+        console.log(
+          `Face detection similarity: ${similarity.toFixed(3)} for media ${
+            media.id
+          }`
+        );
 
         // For debugging, let's include all faces for now
-        if (similarity > 0.1) { // Very low threshold to see all matches
+        if (similarity > 0.1) {
+          // Very low threshold to see all matches
           if (!matchingMedia.has(media.id)) {
             matchingMedia.set(media.id, {
               ...media.toJSON(),
               faceDetections: [],
             });
           }
-          
+
           matchingMedia.get(media.id).faceDetections.push({
             id: detection.id,
             faceId: detection.faceId,

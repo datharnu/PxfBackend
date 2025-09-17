@@ -20,7 +20,7 @@ export const testAzureFaceAPI = async (
   try {
     console.log("Testing Azure Face API connection...");
     const isConnected = await AzureFaceService.testConnection();
-    
+
     if (isConnected) {
       return res.status(StatusCodes.OK).json({
         success: true,
@@ -84,12 +84,14 @@ export const debugFaceDetections = async (
       message: "Face detection debug info",
       debug: {
         totalFaceDetections: faceDetections.length,
-        userFaceProfile: userFaceProfile ? {
-          id: userFaceProfile.id,
-          faceRectangle: userFaceProfile.faceRectangle,
-          enrollmentConfidence: userFaceProfile.enrollmentConfidence,
-        } : null,
-        faceDetections: faceDetections.map(detection => ({
+        userFaceProfile: userFaceProfile
+          ? {
+              id: userFaceProfile.id,
+              faceRectangle: userFaceProfile.faceRectangle,
+              enrollmentConfidence: userFaceProfile.enrollmentConfidence,
+            }
+          : null,
+        faceDetections: faceDetections.map((detection) => ({
           id: detection.id,
           faceId: detection.faceId,
           faceRectangle: detection.faceRectangle,
