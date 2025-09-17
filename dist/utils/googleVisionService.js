@@ -9,17 +9,50 @@ const axios_1 = __importDefault(require("axios"));
 // Google Cloud Vision API configuration
 const GOOGLE_APPLICATION_CREDENTIALS = process.env.GOOGLE_APPLICATION_CREDENTIALS;
 const GOOGLE_APPLICATION_CREDENTIALS_JSON = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
-if (!GOOGLE_APPLICATION_CREDENTIALS && !GOOGLE_APPLICATION_CREDENTIALS_JSON) {
-    throw new Error("Google Vision service account is not configured. Please set GOOGLE_APPLICATION_CREDENTIALS or GOOGLE_APPLICATION_CREDENTIALS_JSON environment variable.");
+// Individual credential components for Render
+const GOOGLE_PROJECT_ID = process.env.GOOGLE_PROJECT_ID;
+const GOOGLE_PRIVATE_KEY_ID = process.env.GOOGLE_PRIVATE_KEY_ID;
+const GOOGLE_PRIVATE_KEY = process.env.GOOGLE_PRIVATE_KEY;
+const GOOGLE_CLIENT_EMAIL = process.env.GOOGLE_CLIENT_EMAIL;
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+if (!GOOGLE_APPLICATION_CREDENTIALS && !GOOGLE_APPLICATION_CREDENTIALS_JSON && !GOOGLE_PROJECT_ID) {
+    throw new Error("Google Vision service account is not configured. Please set GOOGLE_APPLICATION_CREDENTIALS, GOOGLE_APPLICATION_CREDENTIALS_JSON, or individual Google credential environment variables.");
 }
 // Initialize Google Vision client
 let visionClient;
-if (GOOGLE_APPLICATION_CREDENTIALS_JSON) {
-    // Use JSON string from environment variable (for Render/production)
-    const credentials = JSON.parse(GOOGLE_APPLICATION_CREDENTIALS_JSON);
+if (GOOGLE_PROJECT_ID && GOOGLE_PRIVATE_KEY && GOOGLE_CLIENT_EMAIL) {
+    // Use individual environment variables (for Render/production)
+    const credentials = {
+        type: "service_account",
+        project_id: GOOGLE_PROJECT_ID,
+        private_key_id: GOOGLE_PRIVATE_KEY_ID,
+        private_key: GOOGLE_PRIVATE_KEY,
+        client_email: GOOGLE_CLIENT_EMAIL,
+        client_id: GOOGLE_CLIENT_ID,
+        auth_uri: "https://accounts.google.com/o/oauth2/auth",
+        token_uri: "https://oauth2.googleapis.com/token",
+        auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
+        client_x509_cert_url: `https://www.googleapis.com/robot/v1/metadata/x509/${encodeURIComponent(GOOGLE_CLIENT_EMAIL)}`,
+        universe_domain: "googleapis.com"
+    };
     visionClient = new vision_1.ImageAnnotatorClient({
         credentials: credentials,
     });
+}
+else if (GOOGLE_APPLICATION_CREDENTIALS_JSON) {
+    // Use JSON string from environment variable (for Render/production)
+    try {
+        const credentials = JSON.parse(GOOGLE_APPLICATION_CREDENTIALS_JSON);
+        visionClient = new vision_1.ImageAnnotatorClient({
+            credentials: credentials,
+        });
+    }
+    catch (error) {
+        console.error("Error parsing GOOGLE_APPLICATION_CREDENTIALS_JSON:", error);
+        console.error("JSON string length:", GOOGLE_APPLICATION_CREDENTIALS_JSON.length);
+        console.error("JSON string preview:", GOOGLE_APPLICATION_CREDENTIALS_JSON.substring(0, 100) + "...");
+        throw new Error("Invalid JSON in GOOGLE_APPLICATION_CREDENTIALS_JSON environment variable");
+    }
 }
 else {
     // Use file path (for local development)
@@ -34,7 +67,7 @@ class GoogleVisionService {
     static async testConnection() {
         try {
             console.log("Testing Google Vision API connection...");
-            console.log("Service account configured:", !!(GOOGLE_APPLICATION_CREDENTIALS || GOOGLE_APPLICATION_CREDENTIALS_JSON));
+            console.log("Service account configured:", !!(GOOGLE_APPLICATION_CREDENTIALS || GOOGLE_APPLICATION_CREDENTIALS_JSON || GOOGLE_PROJECT_ID));
             // Test with a simple public image
             const testImageUrl = "https://upload.wikimedia.org/wikipedia/commons/thumb/1/18/Brad_Pitt_2019_by_Glenn_Francis.jpg/256px-Brad_Pitt_2019_by_Glenn_Francis.jpg";
             const result = await this.detectFacesFromUrl(testImageUrl);
@@ -101,7 +134,7 @@ class GoogleVisionService {
                 message: error instanceof Error ? error.message : "Unknown error",
                 stack: error instanceof Error ? error.stack : undefined,
                 imageUrl,
-                serviceAccount: !!(GOOGLE_APPLICATION_CREDENTIALS || GOOGLE_APPLICATION_CREDENTIALS_JSON),
+                serviceAccount: !!(GOOGLE_APPLICATION_CREDENTIALS || GOOGLE_APPLICATION_CREDENTIALS_JSON || GOOGLE_PROJECT_ID),
             });
             throw new Error(`Face detection failed: ${error instanceof Error ? error.message : "Unknown error"}`);
         }
