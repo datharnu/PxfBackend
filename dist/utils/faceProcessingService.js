@@ -171,7 +171,8 @@ class FaceProcessingService {
                 // Calculate face rectangle similarity
                 const similarity = this.calculateFaceSimilarity(userFaceProfile.faceRectangle, detection.faceRectangle);
                 // If similarity is above threshold, consider it a match
-                if (similarity > 0.7) { // 70% similarity threshold
+                if (similarity > 0.7) {
+                    // 70% similarity threshold
                     if (!matchingMedia.has(media.id)) {
                         matchingMedia.set(media.id, {
                             ...media.toJSON(),
@@ -207,14 +208,20 @@ class FaceProcessingService {
         const area2 = face2.width * face2.height;
         const areaSimilarity = 1 - Math.abs(area1 - area2) / Math.max(area1, area2);
         // Calculate position similarity (normalized)
-        const positionSimilarity = 1 - (Math.abs(face1.left - face2.left) +
-            Math.abs(face1.top - face2.top)) / (Math.max(face1.width, face2.width) + Math.max(face1.height, face2.height));
+        const positionSimilarity = 1 -
+            (Math.abs(face1.left - face2.left) + Math.abs(face1.top - face2.top)) /
+                (Math.max(face1.width, face2.width) +
+                    Math.max(face1.height, face2.height));
         // Calculate aspect ratio similarity
         const aspectRatio1 = face1.width / face1.height;
         const aspectRatio2 = face2.width / face2.height;
-        const aspectRatioSimilarity = 1 - Math.abs(aspectRatio1 - aspectRatio2) / Math.max(aspectRatio1, aspectRatio2);
+        const aspectRatioSimilarity = 1 -
+            Math.abs(aspectRatio1 - aspectRatio2) /
+                Math.max(aspectRatio1, aspectRatio2);
         // Weighted average
-        return (areaSimilarity * 0.4 + positionSimilarity * 0.3 + aspectRatioSimilarity * 0.3);
+        return (areaSimilarity * 0.4 +
+            positionSimilarity * 0.3 +
+            aspectRatioSimilarity * 0.3);
     }
     /**
      * Get all faces detected in an event
