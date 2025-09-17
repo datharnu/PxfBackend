@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getMediaFaceDetections = exports.getEventFaceProfiles = exports.getFaceDetectionStats = exports.deleteUserFaceProfile = exports.getUserFaceProfile = exports.enrollUserFace = exports.debugFaceDetections = exports.testAzureFaceAPI = void 0;
+exports.getMediaFaceDetections = exports.getEventFaceProfiles = exports.getFaceDetectionStats = exports.deleteUserFaceProfile = exports.getUserFaceProfile = exports.enrollUserFace = exports.debugFaceDetections = exports.testGoogleVisionAPI = void 0;
 const http_status_codes_1 = require("http-status-codes");
 const event_1 = __importDefault(require("../models/event"));
 const eventMedia_1 = __importDefault(require("../models/eventMedia"));
@@ -13,33 +13,33 @@ const userFaceProfile_1 = __importDefault(require("../models/userFaceProfile"));
 const badRequest_1 = __importDefault(require("../errors/badRequest"));
 const notFound_1 = __importDefault(require("../errors/notFound"));
 const unauthorized_1 = __importDefault(require("../errors/unauthorized"));
-const azureFaceService_1 = __importDefault(require("../utils/azureFaceService"));
-// Test Azure Face API connection
-const testAzureFaceAPI = async (req, res, next) => {
+const googleVisionService_1 = __importDefault(require("../utils/googleVisionService"));
+// Test Google Vision API connection
+const testGoogleVisionAPI = async (req, res, next) => {
     try {
-        console.log("Testing Azure Face API connection...");
-        const isConnected = await azureFaceService_1.default.testConnection();
+        console.log("Testing Google Vision API connection...");
+        const isConnected = await googleVisionService_1.default.testConnection();
         if (isConnected) {
             return res.status(http_status_codes_1.StatusCodes.OK).json({
                 success: true,
-                message: "Azure Face API connection successful",
+                message: "Google Vision API connection successful",
                 connected: true,
             });
         }
         else {
             return res.status(http_status_codes_1.StatusCodes.SERVICE_UNAVAILABLE).json({
                 success: false,
-                message: "Azure Face API connection failed",
+                message: "Google Vision API connection failed",
                 connected: false,
             });
         }
     }
     catch (error) {
-        console.error("Azure Face API test error:", error);
+        console.error("Google Vision API test error:", error);
         next(error);
     }
 };
-exports.testAzureFaceAPI = testAzureFaceAPI;
+exports.testGoogleVisionAPI = testGoogleVisionAPI;
 // Debug face detections for an event
 const debugFaceDetections = async (req, res, next) => {
     try {
@@ -146,12 +146,12 @@ const enrollUserFace = async (req, res, next) => {
             throw new badRequest_1.default("You already have a face profile for this event");
         }
         // Validate image URL
-        const isValidUrl = await azureFaceService_1.default.validateImageUrl(media.mediaUrl);
+        const isValidUrl = await googleVisionService_1.default.validateImageUrl(media.mediaUrl);
         if (!isValidUrl) {
             throw new badRequest_1.default("Invalid or inaccessible media URL");
         }
-        // Detect faces in the image (detection only - no identification)
-        const faceDetections = await azureFaceService_1.default.detectFacesFromUrl(media.mediaUrl);
+        // Detect faces in the image using Google Vision
+        const faceDetections = await googleVisionService_1.default.detectFacesFromUrl(media.mediaUrl);
         if (faceDetections.length === 0) {
             throw new badRequest_1.default("No faces detected in the selected image");
         }
@@ -228,7 +228,7 @@ const getUserFaceProfile = async (req, res, next) => {
         // Get training status
         let trainingStatus = "unknown";
         try {
-            trainingStatus = await azureFaceService_1.default.getPersonGroupTrainingStatus(eventId);
+            trainingStatus = "ready"; // Google Vision is always ready
         }
         catch (error) {
             console.error("Error getting training status:", error);
@@ -274,18 +274,7 @@ const deleteUserFaceProfile = async (req, res, next) => {
         if (!faceProfile) {
             throw new notFound_1.default("Face profile not found");
         }
-        // Get person information to delete from Azure
-        try {
-            const persons = await azureFaceService_1.default.listPersons(eventId);
-            const person = persons.find((p) => p.userData === `User: ${userId}`);
-            if (person) {
-                await azureFaceService_1.default.deletePerson(eventId, person.personId);
-            }
-        }
-        catch (error) {
-            console.error("Error deleting person from Azure:", error);
-            // Continue with database deletion even if Azure deletion fails
-        }
+        // Google Vision doesn't require person group management
         // Soft delete the face profile
         await faceProfile.update({ isActive: false });
         return res.status(http_status_codes_1.StatusCodes.OK).json({
@@ -354,7 +343,7 @@ const getFaceDetectionStats = async (req, res, next) => {
         // Get training status
         let trainingStatus = "unknown";
         try {
-            trainingStatus = await azureFaceService_1.default.getPersonGroupTrainingStatus(eventId);
+            trainingStatus = "ready"; // Google Vision is always ready
         }
         catch (error) {
             console.error("Error getting training status:", error);

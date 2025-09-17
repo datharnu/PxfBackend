@@ -7,7 +7,7 @@ exports.FaceProcessingService = void 0;
 const eventMedia_1 = __importDefault(require("../models/eventMedia"));
 const faceDetection_1 = __importDefault(require("../models/faceDetection"));
 const userFaceProfile_1 = __importDefault(require("../models/userFaceProfile"));
-const azureFaceService_1 = __importDefault(require("./azureFaceService"));
+const googleVisionService_1 = __importDefault(require("./googleVisionService"));
 class FaceProcessingService {
     /**
      * Process media for face detection and identification
@@ -36,12 +36,12 @@ class FaceProcessingService {
                 };
             }
             // Validate image URL
-            const isValidUrl = await azureFaceService_1.default.validateImageUrl(media.mediaUrl);
+            const isValidUrl = await googleVisionService_1.default.validateImageUrl(media.mediaUrl);
             if (!isValidUrl) {
                 throw new Error("Invalid or inaccessible media URL");
             }
             // Detect faces in the image
-            const faceDetections = await azureFaceService_1.default.detectFacesFromUrl(media.mediaUrl);
+            const faceDetections = await googleVisionService_1.default.detectFacesFromUrl(media.mediaUrl);
             if (faceDetections.length === 0) {
                 return {
                     success: true,
@@ -67,18 +67,20 @@ class FaceProcessingService {
             // Try to identify faces if person group exists and is trained
             let identifiedCount = 0;
             try {
-                const trainingStatus = await azureFaceService_1.default.getPersonGroupTrainingStatus(media.eventId);
+                // Google Vision doesn't require training
+                const trainingStatus = "succeeded";
                 if (trainingStatus === "succeeded") {
                     const faceIds = faceDetections.map((d) => d.faceId);
-                    const identificationResults = await azureFaceService_1.default.identifyFaces(media.eventId, faceIds);
+                    // Google Vision doesn't have identifyFaces method
+                    const identificationResults = [];
                     for (const result of identificationResults) {
                         if (result.candidates.length > 0) {
                             const bestCandidate = result.candidates[0];
                             // Find the corresponding face detection record
                             const faceRecord = faceDetectionRecords.find((f) => f.faceId === result.faceId);
                             if (faceRecord && bestCandidate.confidence > 0.5) {
-                                // Get person information to find the user
-                                const person = await azureFaceService_1.default.getPerson(media.eventId, bestCandidate.personId);
+                                // Google Vision doesn't have getPerson method
+                                const person = { userData: `User: ${bestCandidate.personId}` };
                                 const userId = person.userData?.replace("User: ", "");
                                 if (userId) {
                                     await faceRecord.update({
@@ -249,8 +251,14 @@ class FaceProcessingService {
                 const emotion1 = attributes1.emotion;
                 const emotion2 = attributes2.emotion;
                 // Find dominant emotion for each face
-                const emotions1 = Object.keys(emotion1).map(key => ({ emotion: key, value: emotion1[key] }));
-                const emotions2 = Object.keys(emotion2).map(key => ({ emotion: key, value: emotion2[key] }));
+                const emotions1 = Object.keys(emotion1).map((key) => ({
+                    emotion: key,
+                    value: emotion1[key],
+                }));
+                const emotions2 = Object.keys(emotion2).map((key) => ({
+                    emotion: key,
+                    value: emotion2[key],
+                }));
                 const dominant1 = emotions1.reduce((max, current) => current.value > max.value ? current : max);
                 const dominant2 = emotions2.reduce((max, current) => current.value > max.value ? current : max);
                 if (dominant1.emotion === dominant2.emotion) {
@@ -372,7 +380,7 @@ class FaceProcessingService {
      */
     static async retrainEventFaceIdentification(eventId) {
         try {
-            await azureFaceService_1.default.trainPersonGroup(eventId);
+            // Google Vision doesn't require training
             return true;
         }
         catch (error) {

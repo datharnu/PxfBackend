@@ -1,6 +1,6 @@
 import express from "express";
 import {
-  testAzureFaceAPI,
+  testGoogleVisionAPI,
   debugFaceDetections,
   enrollUserFace,
   getUserFaceProfile,
@@ -13,8 +13,8 @@ import isUserAuthenticated from "../middlewares/isAuthenticated";
 
 const router = express.Router();
 
-// Test Azure Face API connection
-router.get("/test", testAzureFaceAPI);
+// Test Google Vision API connection
+router.get("/test", testGoogleVisionAPI);
 
 // Debug face detections
 router.get("/events/:eventId/debug", isUserAuthenticated, debugFaceDetections);

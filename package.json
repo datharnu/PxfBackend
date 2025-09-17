@@ -31,6 +31,7 @@
   "dependencies": {
     "@azure/cognitiveservices-face": "^5.0.0",
     "@azure/ms-rest-js": "^2.7.0",
+    "@google-cloud/vision": "^5.3.3",
     "@types/uuid": "^10.0.0",
     "axios": "^1.11.0",
     "bcryptjs": "^3.0.2",

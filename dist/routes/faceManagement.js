@@ -7,8 +7,8 @@ const express_1 = __importDefault(require("express"));
 const faceManagement_1 = require("../controllers/faceManagement");
 const isAuthenticated_1 = __importDefault(require("../middlewares/isAuthenticated"));
 const router = express_1.default.Router();
-// Test Azure Face API connection
-router.get("/test", faceManagement_1.testAzureFaceAPI);
+// Test Google Vision API connection
+router.get("/test", faceManagement_1.testGoogleVisionAPI);
 // Debug face detections
 router.get("/events/:eventId/debug", isAuthenticated_1.default, faceManagement_1.debugFaceDetections);
 // Face enrollment routes

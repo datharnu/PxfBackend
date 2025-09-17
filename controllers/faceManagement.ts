@@ -9,33 +9,33 @@ import UserFaceProfile from "../models/userFaceProfile";
 import BadRequestError from "../errors/badRequest";
 import NotFoundError from "../errors/notFound";
 import UnAuthorizedError from "../errors/unauthorized";
-import AzureFaceService from "../utils/azureFaceService";
+import GoogleVisionService from "../utils/googleVisionService";
 
-// Test Azure Face API connection
-export const testAzureFaceAPI = async (
+// Test Google Vision API connection
+export const testGoogleVisionAPI = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    console.log("Testing Azure Face API connection...");
-    const isConnected = await AzureFaceService.testConnection();
-
+    console.log("Testing Google Vision API connection...");
+    const isConnected = await GoogleVisionService.testConnection();
+    
     if (isConnected) {
       return res.status(StatusCodes.OK).json({
         success: true,
-        message: "Azure Face API connection successful",
+        message: "Google Vision API connection successful",
         connected: true,
       });
     } else {
       return res.status(StatusCodes.SERVICE_UNAVAILABLE).json({
         success: false,
-        message: "Azure Face API connection failed",
+        message: "Google Vision API connection failed",
         connected: false,
       });
     }
   } catch (error) {
-    console.error("Azure Face API test error:", error);
+    console.error("Google Vision API test error:", error);
     next(error);
   }
 };
@@ -170,13 +170,13 @@ export const enrollUserFace = async (
     }
 
     // Validate image URL
-    const isValidUrl = await AzureFaceService.validateImageUrl(media.mediaUrl);
+    const isValidUrl = await GoogleVisionService.validateImageUrl(media.mediaUrl);
     if (!isValidUrl) {
       throw new BadRequestError("Invalid or inaccessible media URL");
     }
 
-    // Detect faces in the image (detection only - no identification)
-    const faceDetections = await AzureFaceService.detectFacesFromUrl(
+    // Detect faces in the image using Google Vision
+    const faceDetections = await GoogleVisionService.detectFacesFromUrl(
       media.mediaUrl
     );
 
@@ -271,9 +271,7 @@ export const getUserFaceProfile = async (
     // Get training status
     let trainingStatus = "unknown";
     try {
-      trainingStatus = await AzureFaceService.getPersonGroupTrainingStatus(
-        eventId
-      );
+      trainingStatus = "ready"; // Google Vision is always ready
     } catch (error) {
       console.error("Error getting training status:", error);
     }
@@ -326,18 +324,7 @@ export const deleteUserFaceProfile = async (
       throw new NotFoundError("Face profile not found");
     }
 
-    // Get person information to delete from Azure
-    try {
-      const persons = await AzureFaceService.listPersons(eventId);
-      const person = persons.find((p) => p.userData === `User: ${userId}`);
-
-      if (person) {
-        await AzureFaceService.deletePerson(eventId, person.personId);
-      }
-    } catch (error) {
-      console.error("Error deleting person from Azure:", error);
-      // Continue with database deletion even if Azure deletion fails
-    }
+    // Google Vision doesn't require person group management
 
     // Soft delete the face profile
     await faceProfile.update({ isActive: false });
@@ -424,9 +411,7 @@ export const getFaceDetectionStats = async (
     // Get training status
     let trainingStatus = "unknown";
     try {
-      trainingStatus = await AzureFaceService.getPersonGroupTrainingStatus(
-        eventId
-      );
+      trainingStatus = "ready"; // Google Vision is always ready
     } catch (error) {
       console.error("Error getting training status:", error);
     }

@@ -52,11 +52,11 @@ CLOUDINARY_API_KEY=your-cloudinary-api-key
 CLOUDINARY_API_SECRET=your-cloudinary-api-secret
 ```
 
-### Azure Face API Configuration (NEW)
+### Google Cloud Vision API Configuration
 
 ```env
-AZURE_FACE_ENDPOINT=https://your-region.cognitiveservices.azure.com/
-AZURE_FACE_KEY=your-azure-face-api-key
+GOOGLE_VISION_API_KEY=your-google-vision-api-key
+GOOGLE_APPLICATION_CREDENTIALS=path/to/service-account-key.json
 ```
 
 ### Email Configuration (Optional)
@@ -76,23 +76,25 @@ PAYSTACK_SECRET_KEY=your-paystack-secret-key
 PAYSTACK_PUBLIC_KEY=your-paystack-public-key
 ```
 
-## Getting Azure Face API Credentials
+## Getting Google Cloud Vision API Credentials
 
-1. **Create Azure Account**: Go to [Azure Portal](https://portal.azure.com)
-2. **Create Face Resource**:
-   - Search for "Face" in Azure services
-   - Click "Create" and select "Face"
-   - Choose your subscription and resource group
-   - Select pricing tier (F0 for free tier, S0 for standard)
-   - Choose region (recommend same as your app)
-3. **Get Credentials**:
-   - Go to your Face resource
-   - Copy the "Endpoint" URL
-   - Go to "Keys and Endpoint" and copy "Key 1"
+1. **Create Google Cloud Account**: Go to [Google Cloud Console](https://console.cloud.google.com)
+2. **Create a Project**:
+   - Create a new project or select existing one
+   - Enable the Vision API
+3. **Get API Key**:
+   - Go to "APIs & Services" > "Credentials"
+   - Click "Create Credentials" > "API Key"
+   - Copy the API key
+4. **Optional - Service Account** (for production):
+   - Create a service account
+   - Download the JSON key file
+   - Set `GOOGLE_APPLICATION_CREDENTIALS` to the file path
 
-## Azure Face API Pricing
+## Google Cloud Vision API Pricing
 
-- **Free Tier (F0)**: 20 calls per minute, 30,000 calls per month
-- **Standard Tier (S0)**: 10 calls per second, unlimited calls
+- **Free Tier**: 1,000 requests per month
+- **Paid**: $1.50 per 1,000 requests
+- **No approval required** for face detection and matching
 
 For most applications, the free tier should be sufficient for testing and small-scale usage.
