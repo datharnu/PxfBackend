@@ -31,11 +31,13 @@ let visionClient;
 if (GOOGLE_PROJECT_ID && GOOGLE_PRIVATE_KEY && GOOGLE_CLIENT_EMAIL) {
     // Use individual environment variables (for Render/production)
     console.log("Using individual Google credentials from environment variables");
+    // Fix private key format - replace \\n with actual newlines
+    const formattedPrivateKey = GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n');
     const credentials = {
         type: "service_account",
         project_id: GOOGLE_PROJECT_ID,
         private_key_id: GOOGLE_PRIVATE_KEY_ID,
-        private_key: GOOGLE_PRIVATE_KEY,
+        private_key: formattedPrivateKey,
         client_email: GOOGLE_CLIENT_EMAIL,
         client_id: GOOGLE_VISION_CLIENT_ID,
         auth_uri: "https://accounts.google.com/o/oauth2/auth",
@@ -44,6 +46,9 @@ if (GOOGLE_PROJECT_ID && GOOGLE_PRIVATE_KEY && GOOGLE_CLIENT_EMAIL) {
         client_x509_cert_url: `https://www.googleapis.com/robot/v1/metadata/x509/${encodeURIComponent(GOOGLE_CLIENT_EMAIL)}`,
         universe_domain: "googleapis.com"
     };
+    console.log("Private key formatted successfully");
+    console.log("Project ID:", GOOGLE_PROJECT_ID);
+    console.log("Client Email:", GOOGLE_CLIENT_EMAIL);
     visionClient = new vision_1.ImageAnnotatorClient({
         credentials: credentials,
         projectId: GOOGLE_PROJECT_ID,
@@ -54,6 +59,10 @@ else if (GOOGLE_APPLICATION_CREDENTIALS_JSON) {
     console.log("Using JSON credentials from environment variable");
     try {
         const credentials = JSON.parse(GOOGLE_APPLICATION_CREDENTIALS_JSON);
+        // Fix private key format in JSON credentials too
+        if (credentials.private_key) {
+            credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
+        }
         visionClient = new vision_1.ImageAnnotatorClient({
             credentials: credentials,
             projectId: credentials.project_id,
