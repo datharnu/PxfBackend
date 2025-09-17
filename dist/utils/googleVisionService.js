@@ -15,6 +15,13 @@ const GOOGLE_PRIVATE_KEY_ID = process.env.GOOGLE_PRIVATE_KEY_ID;
 const GOOGLE_PRIVATE_KEY = process.env.GOOGLE_PRIVATE_KEY;
 const GOOGLE_CLIENT_EMAIL = process.env.GOOGLE_CLIENT_EMAIL;
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+// Debug environment variables
+console.log("Google Vision Environment Variables Debug:");
+console.log("GOOGLE_APPLICATION_CREDENTIALS:", !!GOOGLE_APPLICATION_CREDENTIALS);
+console.log("GOOGLE_APPLICATION_CREDENTIALS_JSON:", !!GOOGLE_APPLICATION_CREDENTIALS_JSON);
+console.log("GOOGLE_PROJECT_ID:", !!GOOGLE_PROJECT_ID);
+console.log("GOOGLE_PRIVATE_KEY:", !!GOOGLE_PRIVATE_KEY);
+console.log("GOOGLE_CLIENT_EMAIL:", !!GOOGLE_CLIENT_EMAIL);
 if (!GOOGLE_APPLICATION_CREDENTIALS && !GOOGLE_APPLICATION_CREDENTIALS_JSON && !GOOGLE_PROJECT_ID) {
     throw new Error("Google Vision service account is not configured. Please set GOOGLE_APPLICATION_CREDENTIALS, GOOGLE_APPLICATION_CREDENTIALS_JSON, or individual Google credential environment variables.");
 }
@@ -22,6 +29,7 @@ if (!GOOGLE_APPLICATION_CREDENTIALS && !GOOGLE_APPLICATION_CREDENTIALS_JSON && !
 let visionClient;
 if (GOOGLE_PROJECT_ID && GOOGLE_PRIVATE_KEY && GOOGLE_CLIENT_EMAIL) {
     // Use individual environment variables (for Render/production)
+    console.log("Using individual Google credentials from environment variables");
     const credentials = {
         type: "service_account",
         project_id: GOOGLE_PROJECT_ID,
@@ -37,14 +45,17 @@ if (GOOGLE_PROJECT_ID && GOOGLE_PRIVATE_KEY && GOOGLE_CLIENT_EMAIL) {
     };
     visionClient = new vision_1.ImageAnnotatorClient({
         credentials: credentials,
+        projectId: GOOGLE_PROJECT_ID,
     });
 }
 else if (GOOGLE_APPLICATION_CREDENTIALS_JSON) {
     // Use JSON string from environment variable (for Render/production)
+    console.log("Using JSON credentials from environment variable");
     try {
         const credentials = JSON.parse(GOOGLE_APPLICATION_CREDENTIALS_JSON);
         visionClient = new vision_1.ImageAnnotatorClient({
             credentials: credentials,
+            projectId: credentials.project_id,
         });
     }
     catch (error) {
@@ -56,6 +67,7 @@ else if (GOOGLE_APPLICATION_CREDENTIALS_JSON) {
 }
 else {
     // Use file path (for local development)
+    console.log("Using Google credentials from file path");
     visionClient = new vision_1.ImageAnnotatorClient({
         keyFilename: GOOGLE_APPLICATION_CREDENTIALS,
     });
