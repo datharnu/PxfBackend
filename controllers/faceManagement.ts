@@ -20,7 +20,7 @@ export const testAzureFaceAPI = async (
   try {
     console.log("Testing Azure Face API connection...");
     const isConnected = await AzureFaceService.testConnection();
-    
+
     if (isConnected) {
       return res.status(StatusCodes.OK).json({
         success: true,
@@ -106,7 +106,7 @@ export const enrollUserFace = async (
       throw new BadRequestError("Invalid or inaccessible media URL");
     }
 
-    // Detect faces in the image
+    // Detect faces in the image (detection only - no identification)
     const faceDetections = await AzureFaceService.detectFacesFromUrl(
       media.mediaUrl
     );
@@ -123,41 +123,11 @@ export const enrollUserFace = async (
 
     const faceDetection = faceDetections[0];
 
-    // Create person group for event if it doesn't exist
-    try {
-      await AzureFaceService.createPersonGroup(eventId, event.title);
-    } catch (error) {
-      // Person group might already exist, continue
-      console.log("Person group might already exist:", error);
-    }
-
-    // Create person in the person group
-    const user = await User.findByPk(userId);
-    if (!user) {
-      throw new NotFoundError("User not found");
-    }
-
-    const personId = await AzureFaceService.createPerson(
-      eventId,
-      userId,
-      user.fullname
-    );
-
-    // Add face to person
-    const persistedFaceId = await AzureFaceService.addFaceToPerson(
-      eventId,
-      personId,
-      media.mediaUrl
-    );
-
-    // Train the person group
-    await AzureFaceService.trainPersonGroup(eventId);
-
-    // Create user face profile record
+    // Create user face profile record (detection only - no Azure identification)
     const faceProfile = await UserFaceProfile.create({
       userId,
       eventId,
-      persistedFaceId,
+      persistedFaceId: `detection_only_${userId}_${eventId}_${Date.now()}`, // Generate a local ID
       faceId: faceDetection.faceId,
       enrollmentMediaId: mediaId,
       faceRectangle: faceDetection.faceRectangle,
@@ -167,7 +137,7 @@ export const enrollUserFace = async (
 
     return res.status(StatusCodes.CREATED).json({
       success: true,
-      message: "Face enrolled successfully",
+      message: "Face enrolled successfully (detection only)",
       faceProfile: {
         id: faceProfile.id,
         userId: faceProfile.userId,
@@ -177,7 +147,7 @@ export const enrollUserFace = async (
         createdAt: faceProfile.createdAt,
       },
       trainingStatus:
-        "Training started. Face identification will be available shortly.",
+        "Face detection enabled. Note: Face identification requires Azure approval for Identification/Verification features.",
     });
   } catch (error) {
     console.error("Face enrollment error:", error);

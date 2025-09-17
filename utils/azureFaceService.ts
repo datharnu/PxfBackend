@@ -18,9 +18,9 @@ const credentials = new ApiKeyCredentials({
 });
 const faceClient = new FaceClient(credentials, AZURE_FACE_ENDPOINT);
 
-// Face detection options - minimal configuration for maximum compatibility
+// Face detection options - detection only (no identification features)
 const DETECTION_OPTIONS: FaceModels.FaceDetectWithUrlOptionalParams = {
-  returnFaceId: true,
+  returnFaceId: false, // Don't request face ID to avoid identification features
 };
 
 // Face identification options
@@ -63,22 +63,27 @@ export interface FaceIdentificationResult {
 
 export class AzureFaceService {
   /**
-   * Test Azure Face API connection
+   * Test Azure Face API connection (detection only)
    */
   static async testConnection(): Promise<boolean> {
     try {
       console.log("Testing Azure Face API connection...");
       console.log("Endpoint:", AZURE_FACE_ENDPOINT);
       console.log("Key present:", !!AZURE_FACE_KEY);
-      
-      // Test with a simple public image
-      const testImageUrl = "https://upload.wikimedia.org/wikipedia/commons/thumb/1/18/Brad_Pitt_2019_by_Glenn_Francis.jpg/256px-Brad_Pitt_2019_by_Glenn_Francis.jpg";
-      
+
+      // Test with a simple public image - detection only
+      const testImageUrl =
+        "https://upload.wikimedia.org/wikipedia/commons/thumb/1/18/Brad_Pitt_2019_by_Glenn_Francis.jpg/256px-Brad_Pitt_2019_by_Glenn_Francis.jpg";
+
       const result = await faceClient.face.detectWithUrl(testImageUrl, {
-        returnFaceId: true,
+        returnFaceId: false, // Don't request face ID to avoid identification features
       });
-      
-      console.log("Azure Face API test successful:", result.length, "faces detected");
+
+      console.log(
+        "Azure Face API test successful:",
+        result.length,
+        "faces detected"
+      );
       return true;
     } catch (error) {
       console.error("Azure Face API test failed:", error);
@@ -96,14 +101,14 @@ export class AzureFaceService {
       console.log("Azure Face API - Detecting faces from URL:", imageUrl);
       console.log("Azure Face API - Detection options:", DETECTION_OPTIONS);
       console.log("Azure Face API - Endpoint:", AZURE_FACE_ENDPOINT);
-      
+
       const result = await faceClient.face.detectWithUrl(
         imageUrl,
         DETECTION_OPTIONS
       );
 
-      return result.map((face) => ({
-        faceId: face.faceId!,
+      return result.map((face, index) => ({
+        faceId: `detected_${index}_${Date.now()}`, // Generate a temporary face ID
         faceRectangle: {
           top: face.faceRectangle!.top,
           left: face.faceRectangle!.left,
@@ -136,7 +141,7 @@ export class AzureFaceService {
         stack: error instanceof Error ? error.stack : undefined,
         imageUrl,
         detectionOptions: DETECTION_OPTIONS,
-        endpoint: AZURE_FACE_ENDPOINT
+        endpoint: AZURE_FACE_ENDPOINT,
       });
       throw new Error(
         `Face detection failed: ${

@@ -88,7 +88,7 @@ const enrollUserFace = async (req, res, next) => {
         if (!isValidUrl) {
             throw new badRequest_1.default("Invalid or inaccessible media URL");
         }
-        // Detect faces in the image
+        // Detect faces in the image (detection only - no identification)
         const faceDetections = await azureFaceService_1.default.detectFacesFromUrl(media.mediaUrl);
         if (faceDetections.length === 0) {
             throw new badRequest_1.default("No faces detected in the selected image");
@@ -97,29 +97,11 @@ const enrollUserFace = async (req, res, next) => {
             throw new badRequest_1.default("Multiple faces detected. Please select an image with only your face");
         }
         const faceDetection = faceDetections[0];
-        // Create person group for event if it doesn't exist
-        try {
-            await azureFaceService_1.default.createPersonGroup(eventId, event.title);
-        }
-        catch (error) {
-            // Person group might already exist, continue
-            console.log("Person group might already exist:", error);
-        }
-        // Create person in the person group
-        const user = await user_1.default.findByPk(userId);
-        if (!user) {
-            throw new notFound_1.default("User not found");
-        }
-        const personId = await azureFaceService_1.default.createPerson(eventId, userId, user.fullname);
-        // Add face to person
-        const persistedFaceId = await azureFaceService_1.default.addFaceToPerson(eventId, personId, media.mediaUrl);
-        // Train the person group
-        await azureFaceService_1.default.trainPersonGroup(eventId);
-        // Create user face profile record
+        // Create user face profile record (detection only - no Azure identification)
         const faceProfile = await userFaceProfile_1.default.create({
             userId,
             eventId,
-            persistedFaceId,
+            persistedFaceId: `detection_only_${userId}_${eventId}_${Date.now()}`, // Generate a local ID
             faceId: faceDetection.faceId,
             enrollmentMediaId: mediaId,
             faceRectangle: faceDetection.faceRectangle,
@@ -128,7 +110,7 @@ const enrollUserFace = async (req, res, next) => {
         });
         return res.status(http_status_codes_1.StatusCodes.CREATED).json({
             success: true,
-            message: "Face enrolled successfully",
+            message: "Face enrolled successfully (detection only)",
             faceProfile: {
                 id: faceProfile.id,
                 userId: faceProfile.userId,
@@ -137,7 +119,7 @@ const enrollUserFace = async (req, res, next) => {
                 faceAttributes: faceProfile.faceAttributes,
                 createdAt: faceProfile.createdAt,
             },
-            trainingStatus: "Training started. Face identification will be available shortly.",
+            trainingStatus: "Face detection enabled. Note: Face identification requires Azure approval for Identification/Verification features.",
         });
     }
     catch (error) {
