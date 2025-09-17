@@ -213,10 +213,12 @@ export class FaceProcessingService {
         const media = detection.media;
         if (!media) return;
 
-        // Calculate face rectangle similarity
-        const similarity = this.calculateFaceSimilarity(
+        // Calculate advanced face similarity
+        const similarity = this.calculateAdvancedFaceSimilarity(
           userFaceProfile.faceRectangle,
-          detection.faceRectangle
+          detection.faceRectangle,
+          userFaceProfile.faceAttributes,
+          detection.faceAttributes
         );
 
         console.log(
@@ -225,9 +227,9 @@ export class FaceProcessingService {
           }`
         );
 
-        // For debugging, let's include all faces for now
-        if (similarity > 0.1) {
-          // Very low threshold to see all matches
+        // Use a moderate threshold - we'll improve this with manual confirmation later
+        if (similarity > 0.5) {
+          // Moderate threshold - may need manual confirmation
           if (!matchingMedia.has(media.id)) {
             matchingMedia.set(media.id, {
               ...media.toJSON(),
@@ -288,6 +290,52 @@ export class FaceProcessingService {
       positionSimilarity * 0.3 +
       aspectRatioSimilarity * 0.3
     );
+  }
+
+  /**
+   * Calculate advanced face similarity using multiple criteria
+   */
+  private static calculateAdvancedFaceSimilarity(
+    face1: any,
+    face2: any,
+    attributes1?: any,
+    attributes2?: any
+  ): number {
+    if (!face1 || !face2) return 0;
+
+    // Basic rectangle similarity
+    const rectangleSimilarity = this.calculateFaceSimilarity(face1, face2);
+
+    // If we have face attributes, use them for additional matching
+    let attributeSimilarity = 0;
+    if (attributes1 && attributes2) {
+      // Compare glasses
+      if (attributes1.glasses && attributes2.glasses) {
+        if (attributes1.glasses === attributes2.glasses) {
+          attributeSimilarity += 0.3;
+        }
+      }
+
+      // Compare emotions (if available)
+      if (attributes1.emotion && attributes2.emotion) {
+        const emotion1 = attributes1.emotion;
+        const emotion2 = attributes2.emotion;
+        
+        // Find dominant emotion for each face
+        const emotions1 = Object.keys(emotion1).map(key => ({ emotion: key, value: emotion1[key] }));
+        const emotions2 = Object.keys(emotion2).map(key => ({ emotion: key, value: emotion2[key] }));
+        
+        const dominant1 = emotions1.reduce((max, current) => current.value > max.value ? current : max);
+        const dominant2 = emotions2.reduce((max, current) => current.value > max.value ? current : max);
+        
+        if (dominant1.emotion === dominant2.emotion) {
+          attributeSimilarity += 0.2;
+        }
+      }
+    }
+
+    // Combine rectangle similarity with attribute similarity
+    return Math.min(1.0, rectangleSimilarity * 0.7 + attributeSimilarity * 0.3);
   }
 
   /**
