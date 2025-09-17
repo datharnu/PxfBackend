@@ -20,7 +20,7 @@ export const testAzureFaceAPI = async (
   try {
     console.log("Testing Azure Face API connection...");
     const isConnected = await AzureFaceService.testConnection();
-
+    
     if (isConnected) {
       return res.status(StatusCodes.OK).json({
         success: true,
@@ -36,6 +36,73 @@ export const testAzureFaceAPI = async (
     }
   } catch (error) {
     console.error("Azure Face API test error:", error);
+    next(error);
+  }
+};
+
+// Debug face detections for an event
+export const debugFaceDetections = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { eventId } = req.params;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      throw new BadRequestError("User authentication required");
+    }
+
+    // Get all face detections for this event
+    const faceDetections = await FaceDetection.findAll({
+      where: {
+        eventId,
+        isActive: true,
+      },
+      include: [
+        {
+          model: EventMedia,
+          as: "media",
+          attributes: ["id", "mediaUrl", "fileName", "mediaType"],
+        },
+      ],
+      order: [["createdAt", "DESC"]],
+    });
+
+    // Get user's face profile
+    const userFaceProfile = await UserFaceProfile.findOne({
+      where: {
+        eventId,
+        userId,
+        isActive: true,
+      },
+    });
+
+    return res.status(StatusCodes.OK).json({
+      success: true,
+      message: "Face detection debug info",
+      debug: {
+        totalFaceDetections: faceDetections.length,
+        userFaceProfile: userFaceProfile ? {
+          id: userFaceProfile.id,
+          faceRectangle: userFaceProfile.faceRectangle,
+          enrollmentConfidence: userFaceProfile.enrollmentConfidence,
+        } : null,
+        faceDetections: faceDetections.map(detection => ({
+          id: detection.id,
+          faceId: detection.faceId,
+          faceRectangle: detection.faceRectangle,
+          confidence: detection.confidence,
+          mediaId: detection.mediaId,
+          mediaUrl: detection.media?.mediaUrl,
+          fileName: detection.media?.fileName,
+          createdAt: detection.createdAt,
+        })),
+      },
+    });
+  } catch (error) {
+    console.error("Debug face detections error:", error);
     next(error);
   }
 };

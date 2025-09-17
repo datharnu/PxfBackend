@@ -1,6 +1,7 @@
 import express from "express";
 import {
   testAzureFaceAPI,
+  debugFaceDetections,
   enrollUserFace,
   getUserFaceProfile,
   deleteUserFaceProfile,
@@ -14,6 +15,9 @@ const router = express.Router();
 
 // Test Azure Face API connection
 router.get("/test", testAzureFaceAPI);
+
+// Debug face detections
+router.get("/events/:eventId/debug", isUserAuthenticated, debugFaceDetections);
 
 // Face enrollment routes
 router.post("/events/:eventId/enroll", isUserAuthenticated, enrollUserFace);

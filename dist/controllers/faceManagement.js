@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getMediaFaceDetections = exports.getEventFaceProfiles = exports.getFaceDetectionStats = exports.deleteUserFaceProfile = exports.getUserFaceProfile = exports.enrollUserFace = exports.testAzureFaceAPI = void 0;
+exports.getMediaFaceDetections = exports.getEventFaceProfiles = exports.getFaceDetectionStats = exports.deleteUserFaceProfile = exports.getUserFaceProfile = exports.enrollUserFace = exports.debugFaceDetections = exports.testAzureFaceAPI = void 0;
 const http_status_codes_1 = require("http-status-codes");
 const event_1 = __importDefault(require("../models/event"));
 const eventMedia_1 = __importDefault(require("../models/eventMedia"));
@@ -40,6 +40,66 @@ const testAzureFaceAPI = async (req, res, next) => {
     }
 };
 exports.testAzureFaceAPI = testAzureFaceAPI;
+// Debug face detections for an event
+const debugFaceDetections = async (req, res, next) => {
+    try {
+        const { eventId } = req.params;
+        const userId = req.user?.id;
+        if (!userId) {
+            throw new badRequest_1.default("User authentication required");
+        }
+        // Get all face detections for this event
+        const faceDetections = await faceDetection_1.default.findAll({
+            where: {
+                eventId,
+                isActive: true,
+            },
+            include: [
+                {
+                    model: eventMedia_1.default,
+                    as: "media",
+                    attributes: ["id", "mediaUrl", "fileName", "mediaType"],
+                },
+            ],
+            order: [["createdAt", "DESC"]],
+        });
+        // Get user's face profile
+        const userFaceProfile = await userFaceProfile_1.default.findOne({
+            where: {
+                eventId,
+                userId,
+                isActive: true,
+            },
+        });
+        return res.status(http_status_codes_1.StatusCodes.OK).json({
+            success: true,
+            message: "Face detection debug info",
+            debug: {
+                totalFaceDetections: faceDetections.length,
+                userFaceProfile: userFaceProfile ? {
+                    id: userFaceProfile.id,
+                    faceRectangle: userFaceProfile.faceRectangle,
+                    enrollmentConfidence: userFaceProfile.enrollmentConfidence,
+                } : null,
+                faceDetections: faceDetections.map(detection => ({
+                    id: detection.id,
+                    faceId: detection.faceId,
+                    faceRectangle: detection.faceRectangle,
+                    confidence: detection.confidence,
+                    mediaId: detection.mediaId,
+                    mediaUrl: detection.media?.mediaUrl,
+                    fileName: detection.media?.fileName,
+                    createdAt: detection.createdAt,
+                })),
+            },
+        });
+    }
+    catch (error) {
+        console.error("Debug face detections error:", error);
+        next(error);
+    }
+};
+exports.debugFaceDetections = debugFaceDetections;
 // Enroll user's face for an event
 const enrollUserFace = async (req, res, next) => {
     try {
