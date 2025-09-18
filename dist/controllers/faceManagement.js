@@ -128,8 +128,29 @@ const enrollUserFace = async (req, res, next) => {
         let mediaRecord = null;
         if (faceImage) {
             // Handle file upload - upload to Cloudinary first
-            const { uploadToCloudinary } = require("../utils/fileUpload");
-            const uploadResult = await uploadToCloudinary(faceImage.buffer, "face-enrollment");
+            const { v2: cloudinary } = require("cloudinary");
+            // Configure Cloudinary (if not already configured)
+            if (!cloudinary.config().cloud_name) {
+                cloudinary.config({
+                    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+                    api_key: process.env.CLOUDINARY_API_KEY,
+                    api_secret: process.env.CLOUDINARY_API_SECRET,
+                });
+            }
+            // Upload to Cloudinary
+            const uploadResult = await new Promise((resolve, reject) => {
+                cloudinary.uploader
+                    .upload_stream({
+                    folder: "face-enrollment",
+                    resource_type: "image",
+                }, (error, result) => {
+                    if (error)
+                        reject(error);
+                    else
+                        resolve(result);
+                })
+                    .end(faceImage.buffer);
+            });
             imageUrl = uploadResult.secure_url;
         }
         else {
