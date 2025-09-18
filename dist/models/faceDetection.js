@@ -134,6 +134,11 @@ FaceDetection.init({
         type: sequelize_1.DataTypes.BOOLEAN,
         defaultValue: true,
     },
+    frameTimestamp: {
+        type: sequelize_1.DataTypes.FLOAT,
+        allowNull: true,
+        comment: "For video frames - timestamp in seconds",
+    },
     createdAt: {
         type: sequelize_1.DataTypes.DATE,
         allowNull: false,

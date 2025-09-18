@@ -39,6 +39,7 @@ interface FaceDetectionAttributes {
   confidence: number; // Confidence score of the face detection
   isIdentified: boolean; // Whether this face has been identified to a user
   identifiedUserId?: string; // User ID if face has been identified
+  frameTimestamp?: number; // For video frames - timestamp in seconds
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -98,6 +99,7 @@ class FaceDetection
   public confidence!: number;
   public isIdentified!: boolean;
   public identifiedUserId?: string;
+  public frameTimestamp?: number;
   public isActive!: boolean;
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
@@ -242,6 +244,11 @@ FaceDetection.init(
     isActive: {
       type: DataTypes.BOOLEAN,
       defaultValue: true,
+    },
+    frameTimestamp: {
+      type: DataTypes.FLOAT,
+      allowNull: true,
+      comment: "For video frames - timestamp in seconds",
     },
     createdAt: {
       type: DataTypes.DATE,
