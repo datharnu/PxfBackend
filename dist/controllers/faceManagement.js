@@ -106,13 +106,15 @@ exports.debugFaceDetections = debugFaceDetections;
 const enrollUserFace = async (req, res, next) => {
     try {
         const { eventId } = req.params;
-        const { mediaId } = req.body;
         const userId = req.user?.id;
         if (!userId) {
             throw new badRequest_1.default("User authentication required");
         }
-        if (!mediaId) {
-            throw new badRequest_1.default("Media ID is required for face enrollment");
+        // Check if this is a file upload or mediaId request
+        const faceImage = req.file;
+        const { mediaId } = req.body;
+        if (!faceImage && !mediaId) {
+            throw new badRequest_1.default("Either a face image file or media ID is required for face enrollment");
         }
         // Find the event
         const event = await event_1.default.findByPk(eventId);
@@ -122,17 +124,28 @@ const enrollUserFace = async (req, res, next) => {
         if (!event.isActive) {
             throw new badRequest_1.default("Event is not active");
         }
-        // Find the media
-        const media = await eventMedia_1.default.findOne({
-            where: {
-                id: mediaId,
-                eventId,
-                uploadedBy: userId,
-                isActive: true,
-            },
-        });
-        if (!media) {
-            throw new notFound_1.default("Media not found or you don't have permission to use it");
+        let imageUrl;
+        let mediaRecord = null;
+        if (faceImage) {
+            // Handle file upload - upload to Cloudinary first
+            const { uploadToCloudinary } = require("../utils/fileUpload");
+            const uploadResult = await uploadToCloudinary(faceImage.buffer, "face-enrollment");
+            imageUrl = uploadResult.secure_url;
+        }
+        else {
+            // Handle mediaId - find existing media
+            mediaRecord = await eventMedia_1.default.findOne({
+                where: {
+                    id: mediaId,
+                    eventId,
+                    uploadedBy: userId,
+                    isActive: true,
+                },
+            });
+            if (!mediaRecord) {
+                throw new notFound_1.default("Media not found or you don't have permission to use it");
+            }
+            imageUrl = mediaRecord.mediaUrl;
         }
         // Check if user already has a face profile for this event
         const existingProfile = await userFaceProfile_1.default.findOne({
@@ -146,12 +159,12 @@ const enrollUserFace = async (req, res, next) => {
             throw new badRequest_1.default("You already have a face profile for this event");
         }
         // Validate image URL
-        const isValidUrl = await googleVisionService_1.default.validateImageUrl(media.mediaUrl);
+        const isValidUrl = await googleVisionService_1.default.validateImageUrl(imageUrl);
         if (!isValidUrl) {
-            throw new badRequest_1.default("Invalid or inaccessible media URL");
+            throw new badRequest_1.default("Invalid or inaccessible image URL");
         }
         // Detect faces in the image using Google Vision
-        const faceDetections = await googleVisionService_1.default.detectFacesFromUrl(media.mediaUrl);
+        const faceDetections = await googleVisionService_1.default.detectFacesFromUrl(imageUrl);
         if (faceDetections.length === 0) {
             throw new badRequest_1.default("No faces detected in the selected image");
         }
@@ -165,7 +178,7 @@ const enrollUserFace = async (req, res, next) => {
             eventId,
             persistedFaceId: `detection_only_${userId}_${eventId}_${Date.now()}`, // Generate a local ID
             faceId: faceDetection.faceId,
-            enrollmentMediaId: mediaId,
+            enrollmentMediaId: mediaRecord?.id || null,
             faceRectangle: faceDetection.faceRectangle,
             faceAttributes: faceDetection.faceAttributes,
             enrollmentConfidence: faceDetection.confidence || 1.0,

@@ -193,6 +193,32 @@ router.get(
       .optional()
       .isInt({ min: 1, max: 100 })
       .withMessage("Limit must be between 1 and 100"),
+    query("similarityThreshold")
+      .optional()
+      .isFloat({ min: 0.1, max: 1.0 })
+      .withMessage("Similarity threshold must be between 0.1 and 1.0"),
+  ],
+  validate,
+  getMediaWithUserFaces
+);
+
+// Alternative route for face-filtered media (matches your frontend URL)
+router.get(
+  "/events/:eventId/faces",
+  [
+    param("eventId").isUUID().withMessage("Event ID must be a valid UUID"),
+    query("page")
+      .optional()
+      .isInt({ min: 1 })
+      .withMessage("Page must be a positive integer"),
+    query("limit")
+      .optional()
+      .isInt({ min: 1, max: 100 })
+      .withMessage("Limit must be between 1 and 100"),
+    query("similarityThreshold")
+      .optional()
+      .isFloat({ min: 0.1, max: 1.0 })
+      .withMessage("Similarity threshold must be between 0.1 and 1.0"),
   ],
   validate,
   getMediaWithUserFaces

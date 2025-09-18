@@ -906,7 +906,7 @@ export const getMediaWithUserFaces = async (
 ) => {
   try {
     const { eventId } = req.params;
-    const { page = 1, limit = 20 } = req.query;
+    const { page = 1, limit = 20, similarityThreshold = 0.8 } = req.query;
     const userId = req.user?.id;
 
     if (!userId) {
@@ -915,6 +915,7 @@ export const getMediaWithUserFaces = async (
 
     const pageNum = parseInt(page as string, 10);
     const limitNum = parseInt(limit as string, 10);
+    const threshold = parseFloat(similarityThreshold as string);
 
     // Find the event
     const event = await Event.findByPk(eventId);
@@ -922,10 +923,11 @@ export const getMediaWithUserFaces = async (
       throw new NotFoundError("Event not found");
     }
 
-    // Get media with user's faces
+    // Get media with user's faces using the specified threshold
     const mediaWithFaces = await FaceProcessingService.getMediaWithUserFaces(
       eventId,
-      userId
+      userId,
+      threshold
     );
 
     // Apply pagination
@@ -933,10 +935,28 @@ export const getMediaWithUserFaces = async (
     const endIndex = startIndex + limitNum;
     const paginatedMedia = mediaWithFaces.slice(startIndex, endIndex);
 
+    // Calculate summary statistics
+    const summary = {
+      totalMatches: mediaWithFaces.length,
+      highConfidenceMatches: mediaWithFaces.filter(
+        (m) => m.overallConfidence > 0.7
+      ).length,
+      mediumConfidenceMatches: mediaWithFaces.filter(
+        (m) => m.overallConfidence > 0.5 && m.overallConfidence <= 0.7
+      ).length,
+      lowConfidenceMatches: mediaWithFaces.filter(
+        (m) => m.overallConfidence <= 0.5
+      ).length,
+    };
+
     return res.status(StatusCodes.OK).json({
       success: true,
-      message: "Media with your face retrieved successfully",
-      media: paginatedMedia,
+      message: `Found ${mediaWithFaces.length} media items containing your face`,
+      data: {
+        userId,
+        matches: paginatedMedia,
+        summary,
+      },
       pagination: {
         page: pageNum,
         limit: limitNum,

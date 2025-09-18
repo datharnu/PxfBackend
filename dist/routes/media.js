@@ -121,6 +121,26 @@ router.get("/event/:eventId/my-faces", [
         .optional()
         .isInt({ min: 1, max: 100 })
         .withMessage("Limit must be between 1 and 100"),
+    (0, express_validator_1.query)("similarityThreshold")
+        .optional()
+        .isFloat({ min: 0.1, max: 1.0 })
+        .withMessage("Similarity threshold must be between 0.1 and 1.0"),
+], customValidations_1.validate, media_1.getMediaWithUserFaces);
+// Alternative route for face-filtered media (matches your frontend URL)
+router.get("/events/:eventId/faces", [
+    (0, express_validator_1.param)("eventId").isUUID().withMessage("Event ID must be a valid UUID"),
+    (0, express_validator_1.query)("page")
+        .optional()
+        .isInt({ min: 1 })
+        .withMessage("Page must be a positive integer"),
+    (0, express_validator_1.query)("limit")
+        .optional()
+        .isInt({ min: 1, max: 100 })
+        .withMessage("Limit must be between 1 and 100"),
+    (0, express_validator_1.query)("similarityThreshold")
+        .optional()
+        .isFloat({ min: 0.1, max: 1.0 })
+        .withMessage("Similarity threshold must be between 0.1 and 1.0"),
 ], customValidations_1.validate, media_1.getMediaWithUserFaces);
 // Get all face detections for an event (admin/event creator only)
 router.get("/event/:eventId/face-detections", [
