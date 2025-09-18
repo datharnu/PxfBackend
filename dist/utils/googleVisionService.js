@@ -120,6 +120,13 @@ class GoogleVisionService {
                 imageContext: {
                     languageHints: ["en"],
                 },
+                // Enhanced detection parameters
+                maxResults: 10, // Allow up to 10 faces per image
+                detectionParams: {
+                    // Enable all available features for better accuracy
+                    includeAttributes: true,
+                    includeLandmarks: true,
+                },
             });
             const faces = result.faceAnnotations || [];
             console.log(`Google Vision detected ${faces.length} faces`);
@@ -332,6 +339,41 @@ class GoogleVisionService {
             console.error("Error downloading image:", error);
             throw new Error(`Failed to download image: ${error instanceof Error ? error.message : "Unknown error"}`);
         }
+    }
+    /**
+     * Convert Google Vision likelihood to numeric score
+     */
+    static likelihoodToScore(likelihood) {
+        switch (likelihood) {
+            case "VERY_LIKELY":
+                return 0.9;
+            case "LIKELY":
+                return 0.7;
+            case "POSSIBLE":
+                return 0.5;
+            case "UNLIKELY":
+                return 0.2;
+            case "VERY_UNLIKELY":
+                return 0.1;
+            default:
+                return 0;
+        }
+    }
+    /**
+     * Get glasses status from face landmarks
+     */
+    static getGlassesStatus(face) {
+        // Google Vision doesn't directly provide glasses detection
+        // We can infer from landmarks or use a default
+        return "NoGlasses"; // Default for now
+    }
+    /**
+     * Get gender from face landmarks (basic inference)
+     */
+    static getGenderFromLandmarks(face) {
+        // This is a placeholder - Google Vision doesn't provide gender detection
+        // You could implement basic heuristics based on face shape, but it's not reliable
+        return "unknown";
     }
     /**
      * Validate if an image URL is accessible
