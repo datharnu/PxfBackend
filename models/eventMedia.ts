@@ -18,6 +18,7 @@ interface EventMediaAttributes {
   fileSize: number; // File size in bytes
   mimeType: string; // MIME type of the file
   cloudinaryPublicId?: string;
+  isFaceEnrollment?: boolean; // Flag to indicate if this is a face enrollment image
   isActive?: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -44,6 +45,7 @@ class EventMedia
   public fileName!: string;
   public fileSize!: number;
   public mimeType!: string;
+  public isFaceEnrollment?: boolean;
   public isActive?: boolean;
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
@@ -164,6 +166,13 @@ EventMedia.init(
       type: DataTypes.STRING,
       allowNull: true,
       field: "cloudinary_public_id",
+    },
+    isFaceEnrollment: {
+      type: DataTypes.BOOLEAN,
+      allowNull: true,
+      defaultValue: false,
+      field: "is_face_enrollment",
+      comment: "Flag to indicate if this media is used for face enrollment",
     },
     isActive: {
       type: DataTypes.BOOLEAN,

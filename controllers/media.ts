@@ -60,12 +60,13 @@ export const submitCloudinaryMedia = async (
       throw new BadRequestError("Event is not active");
     }
 
-    // Get user's existing uploads
+    // Get user's existing uploads (excluding face enrollment images)
     const userUploads = await EventMedia.count({
       where: {
         eventId,
         uploadedBy: userId,
         isActive: true,
+        isFaceEnrollment: { [Op.not]: true }, // Exclude face enrollment images
       },
     });
 
@@ -136,12 +137,13 @@ export const submitCloudinaryMedia = async (
         });
     }
 
-    // Get updated stats
+    // Get updated stats (excluding face enrollment images)
     const updatedUserUploads = await EventMedia.count({
       where: {
         eventId,
         uploadedBy: userId,
         isActive: true,
+        isFaceEnrollment: { [Op.not]: true }, // Exclude face enrollment images
       },
     });
 
@@ -190,12 +192,13 @@ export const getCloudinarySignature = async (
       throw new BadRequestError("Event is not active");
     }
 
-    // Check user's current upload count
+    // Check user's current upload count (excluding face enrollment images)
     const userUploads = await EventMedia.count({
       where: {
         eventId,
         uploadedBy: userId,
         isActive: true,
+        isFaceEnrollment: { [Op.not]: true }, // Exclude face enrollment images
       },
     });
 
@@ -395,19 +398,21 @@ export const getEventUploadStats = async (
       throw new NotFoundError("Event not found");
     }
 
-    // Get total uploads for the event
+    // Get total uploads for the event (excluding face enrollment images)
     const totalUploads = await EventMedia.count({
       where: {
         eventId,
         isActive: true,
+        isFaceEnrollment: { [Op.not]: true }, // Exclude face enrollment images
       },
     });
 
-    // Get uploads by type
+    // Get uploads by type (excluding face enrollment images)
     const uploadsByType = await EventMedia.findAll({
       where: {
         eventId,
         isActive: true,
+        isFaceEnrollment: { [Op.not]: true }, // Exclude face enrollment images
       },
       attributes: [
         "mediaType",

@@ -187,6 +187,7 @@ export const enrollUserFace = async (
         fileSize: faceImage.size || 0,
         mimeType: faceImage.mimetype || "image/jpeg",
         cloudinaryPublicId: (uploadResult as any).public_id,
+        isFaceEnrollment: true, // Mark as face enrollment to exclude from upload limits
       });
     } else {
       // Handle mediaId - find existing media

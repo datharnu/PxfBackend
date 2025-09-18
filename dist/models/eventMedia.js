@@ -124,6 +124,13 @@ EventMedia.init({
         allowNull: true,
         field: "cloudinary_public_id",
     },
+    isFaceEnrollment: {
+        type: sequelize_1.DataTypes.BOOLEAN,
+        allowNull: true,
+        defaultValue: false,
+        field: "is_face_enrollment",
+        comment: "Flag to indicate if this media is used for face enrollment",
+    },
     isActive: {
         type: sequelize_1.DataTypes.BOOLEAN,
         defaultValue: true,

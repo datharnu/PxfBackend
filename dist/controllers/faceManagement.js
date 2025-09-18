@@ -195,6 +195,7 @@ const enrollUserFace = async (req, res, next) => {
                 fileSize: faceImage.size || 0,
                 mimeType: faceImage.mimetype || "image/jpeg",
                 cloudinaryPublicId: uploadResult.public_id,
+                isFaceEnrollment: true, // Mark as face enrollment to exclude from upload limits
             });
         }
         else {

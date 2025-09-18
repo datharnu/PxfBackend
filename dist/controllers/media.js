@@ -38,6 +38,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.uploadMiddleware = exports.retrainFaceIdentification = exports.getEventFaceStats = exports.getEventFaceDetections = exports.getMediaWithUserFaces = exports.getEventMediaBySlug = exports.deleteUserMedia = exports.getEventUserUploads = exports.getEventParticipantsWithUploads = exports.getEventUploadStats = exports.getUserEventUploads = exports.getEventMedia = exports.getCloudinarySignature = exports.submitCloudinaryMedia = void 0;
 const http_status_codes_1 = require("http-status-codes");
+const sequelize_1 = require("sequelize");
 const cloudinary_1 = require("cloudinary");
 const event_1 = __importDefault(require("../models/event"));
 const eventMedia_1 = __importStar(require("../models/eventMedia"));
@@ -73,12 +74,13 @@ const submitCloudinaryMedia = async (req, res, next) => {
         if (!event.isActive) {
             throw new badRequest_1.default("Event is not active");
         }
-        // Get user's existing uploads
+        // Get user's existing uploads (excluding face enrollment images)
         const userUploads = await eventMedia_1.default.count({
             where: {
                 eventId,
                 uploadedBy: userId,
                 isActive: true,
+                isFaceEnrollment: { [sequelize_1.Op.not]: true }, // Exclude face enrollment images
             },
         });
         const photoCapLimit = parseInt(event.photoCapLimit);
@@ -127,12 +129,13 @@ const submitCloudinaryMedia = async (req, res, next) => {
                 console.error("Face processing failed:", error);
             });
         }
-        // Get updated stats
+        // Get updated stats (excluding face enrollment images)
         const updatedUserUploads = await eventMedia_1.default.count({
             where: {
                 eventId,
                 uploadedBy: userId,
                 isActive: true,
+                isFaceEnrollment: { [sequelize_1.Op.not]: true }, // Exclude face enrollment images
             },
         });
         return res.status(http_status_codes_1.StatusCodes.CREATED).json({
@@ -172,12 +175,13 @@ const getCloudinarySignature = async (req, res, next) => {
         if (!event.isActive) {
             throw new badRequest_1.default("Event is not active");
         }
-        // Check user's current upload count
+        // Check user's current upload count (excluding face enrollment images)
         const userUploads = await eventMedia_1.default.count({
             where: {
                 eventId,
                 uploadedBy: userId,
                 isActive: true,
+                isFaceEnrollment: { [sequelize_1.Op.not]: true }, // Exclude face enrollment images
             },
         });
         const photoCapLimit = parseInt(event.photoCapLimit);
@@ -340,18 +344,20 @@ const getEventUploadStats = async (req, res, next) => {
         if (!event) {
             throw new notFound_1.default("Event not found");
         }
-        // Get total uploads for the event
+        // Get total uploads for the event (excluding face enrollment images)
         const totalUploads = await eventMedia_1.default.count({
             where: {
                 eventId,
                 isActive: true,
+                isFaceEnrollment: { [sequelize_1.Op.not]: true }, // Exclude face enrollment images
             },
         });
-        // Get uploads by type
+        // Get uploads by type (excluding face enrollment images)
         const uploadsByType = await eventMedia_1.default.findAll({
             where: {
                 eventId,
                 isActive: true,
+                isFaceEnrollment: { [sequelize_1.Op.not]: true }, // Exclude face enrollment images
             },
             attributes: [
                 "mediaType",
