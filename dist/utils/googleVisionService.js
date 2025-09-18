@@ -120,13 +120,6 @@ class GoogleVisionService {
                 imageContext: {
                     languageHints: ["en"],
                 },
-                // Enhanced detection parameters
-                maxResults: 10, // Allow up to 10 faces per image
-                detectionParams: {
-                    // Enable all available features for better accuracy
-                    includeAttributes: true,
-                    includeLandmarks: true,
-                },
             });
             const faces = result.faceAnnotations || [];
             console.log(`Google Vision detected ${faces.length} faces`);
