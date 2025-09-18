@@ -1,4 +1,37 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -6,7 +39,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.getMediaFaceDetections = exports.getEventFaceProfiles = exports.getFaceDetectionStats = exports.deleteUserFaceProfile = exports.getUserFaceProfile = exports.enrollUserFace = exports.debugFaceDetections = exports.testGoogleVisionAPI = void 0;
 const http_status_codes_1 = require("http-status-codes");
 const event_1 = __importDefault(require("../models/event"));
-const eventMedia_1 = __importDefault(require("../models/eventMedia"));
+const eventMedia_1 = __importStar(require("../models/eventMedia"));
 const user_1 = __importDefault(require("../models/user"));
 const faceDetection_1 = __importDefault(require("../models/faceDetection"));
 const userFaceProfile_1 = __importDefault(require("../models/userFaceProfile"));
@@ -152,6 +185,17 @@ const enrollUserFace = async (req, res, next) => {
                     .end(faceImage.buffer);
             });
             imageUrl = uploadResult.secure_url;
+            // Create a media record for the uploaded face image
+            mediaRecord = await eventMedia_1.default.create({
+                eventId,
+                uploadedBy: userId,
+                mediaType: eventMedia_1.MediaType.IMAGE,
+                mediaUrl: imageUrl,
+                fileName: faceImage.originalname || "face-enrollment.jpg",
+                fileSize: faceImage.size || 0,
+                mimeType: faceImage.mimetype || "image/jpeg",
+                cloudinaryPublicId: uploadResult.public_id,
+            });
         }
         else {
             // Handle mediaId - find existing media
@@ -199,7 +243,7 @@ const enrollUserFace = async (req, res, next) => {
             eventId,
             persistedFaceId: `detection_only_${userId}_${eventId}_${Date.now()}`, // Generate a local ID
             faceId: faceDetection.faceId,
-            enrollmentMediaId: mediaRecord?.id || null,
+            enrollmentMediaId: mediaRecord.id, // Now we always have a media record
             faceRectangle: faceDetection.faceRectangle,
             faceAttributes: faceDetection.faceAttributes,
             enrollmentConfidence: faceDetection.confidence || 1.0,
@@ -213,7 +257,14 @@ const enrollUserFace = async (req, res, next) => {
                 eventId: faceProfile.eventId,
                 enrollmentConfidence: faceProfile.enrollmentConfidence,
                 faceAttributes: faceProfile.faceAttributes,
+                enrollmentMediaId: faceProfile.enrollmentMediaId,
                 createdAt: faceProfile.createdAt,
+            },
+            mediaInfo: {
+                id: mediaRecord.id,
+                mediaUrl: mediaRecord.mediaUrl,
+                fileName: mediaRecord.fileName,
+                mediaType: mediaRecord.mediaType,
             },
             trainingStatus: "Face detection enabled using Google Vision API. Face matching uses custom algorithm.",
         });

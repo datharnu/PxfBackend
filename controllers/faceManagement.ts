@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { StatusCodes } from "http-status-codes";
 import { Op } from "sequelize";
 import Event from "../models/event";
-import EventMedia from "../models/eventMedia";
+import EventMedia, { MediaType } from "../models/eventMedia";
 import User from "../models/user";
 import FaceDetection from "../models/faceDetection";
 import UserFaceProfile from "../models/userFaceProfile";
@@ -176,6 +176,18 @@ export const enrollUserFace = async (
       });
 
       imageUrl = (uploadResult as any).secure_url;
+
+      // Create a media record for the uploaded face image
+      mediaRecord = await EventMedia.create({
+        eventId,
+        uploadedBy: userId,
+        mediaType: MediaType.IMAGE,
+        mediaUrl: imageUrl,
+        fileName: faceImage.originalname || "face-enrollment.jpg",
+        fileSize: faceImage.size || 0,
+        mimeType: faceImage.mimetype || "image/jpeg",
+        cloudinaryPublicId: (uploadResult as any).public_id,
+      });
     } else {
       // Handle mediaId - find existing media
       mediaRecord = await EventMedia.findOne({
@@ -240,7 +252,7 @@ export const enrollUserFace = async (
       eventId,
       persistedFaceId: `detection_only_${userId}_${eventId}_${Date.now()}`, // Generate a local ID
       faceId: faceDetection.faceId,
-      enrollmentMediaId: mediaRecord?.id || null,
+      enrollmentMediaId: mediaRecord.id, // Now we always have a media record
       faceRectangle: faceDetection.faceRectangle,
       faceAttributes: faceDetection.faceAttributes,
       enrollmentConfidence: faceDetection.confidence || 1.0,
@@ -255,7 +267,14 @@ export const enrollUserFace = async (
         eventId: faceProfile.eventId,
         enrollmentConfidence: faceProfile.enrollmentConfidence,
         faceAttributes: faceProfile.faceAttributes,
+        enrollmentMediaId: faceProfile.enrollmentMediaId,
         createdAt: faceProfile.createdAt,
+      },
+      mediaInfo: {
+        id: mediaRecord.id,
+        mediaUrl: mediaRecord.mediaUrl,
+        fileName: mediaRecord.fileName,
+        mediaType: mediaRecord.mediaType,
       },
       trainingStatus:
         "Face detection enabled using Google Vision API. Face matching uses custom algorithm.",
