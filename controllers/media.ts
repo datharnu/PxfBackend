@@ -343,7 +343,10 @@ export const getEventMedia = async (
     }
 
     const { count, rows: media } = await EventMedia.findAndCountAll({
-      where: whereClause,
+      where: {
+        ...whereClause,
+        isFaceEnrollment: { [Op.not]: true }, // Exclude face enrollment images
+      },
       include: [
         {
           model: User,
@@ -398,12 +401,13 @@ export const getUserEventUploads = async (
       throw new NotFoundError("Event not found");
     }
 
-    // Get user's uploads
+    // Get user's uploads (excluding face enrollment)
     const userUploads = await EventMedia.findAll({
       where: {
         eventId,
         uploadedBy: userId,
         isActive: true,
+        isFaceEnrollment: { [Op.not]: true }, // Exclude face enrollment images
       },
       order: [["createdAt", "DESC"]],
     });
@@ -496,11 +500,12 @@ export const getEventUploadStats = async (
       col: "uploadedBy",
     });
 
-    // Get participant details with their upload counts
+    // Get participant details with their upload counts (excluding face enrollment)
     const participants = await EventMedia.findAll({
       where: {
         eventId,
         isActive: true,
+        isFaceEnrollment: { [Op.not]: true }, // Exclude face enrollment images
       },
       attributes: [
         "uploadedBy",
@@ -545,11 +550,12 @@ export const getEventUploadStats = async (
       nest: true,
     });
 
-    // Get recent uploads (last 10)
+    // Get recent uploads (last 10, excluding face enrollment)
     const recentUploads = await EventMedia.findAll({
       where: {
         eventId,
         isActive: true,
+        isFaceEnrollment: { [Op.not]: true }, // Exclude face enrollment images
       },
       include: [
         {
@@ -629,9 +635,13 @@ export const getEventParticipantsWithUploads = async (
       throw new NotFoundError("Event not found");
     }
 
-    // Find distinct uploaders for the event with counts
+    // Find distinct uploaders for the event with counts (excluding face enrollment)
     const participants = await EventMedia.findAll({
-      where: { eventId, isActive: true },
+      where: {
+        eventId,
+        isActive: true,
+        isFaceEnrollment: { [Op.not]: true }, // Exclude face enrollment images
+      },
       attributes: [
         "uploadedBy",
         [
@@ -677,13 +687,14 @@ export const getEventParticipantsWithUploads = async (
       col: "uploadedBy",
     });
 
-    // For each participant, fetch a few recent uploads (thumbnails)
+    // For each participant, fetch a few recent uploads (thumbnails, excluding face enrollment)
     const participantIds = participants.map((p: any) => p.uploadedBy);
     const recentUploads = await EventMedia.findAll({
       where: {
         eventId,
         isActive: true,
         uploadedBy: participantIds.length ? participantIds : undefined,
+        isFaceEnrollment: { [Op.not]: true }, // Exclude face enrollment images
       },
       include: [
         {
@@ -770,7 +781,10 @@ export const getEventUserUploads = async (
     }
 
     const { count, rows } = await EventMedia.findAndCountAll({
-      where: whereClause,
+      where: {
+        ...whereClause,
+        isFaceEnrollment: { [Op.not]: true }, // Exclude face enrollment images
+      },
       order: [["createdAt", "DESC"]],
       limit: limitNum,
       offset,
@@ -878,9 +892,12 @@ export const getEventMediaBySlug = async (
       whereClause.mediaType = mediaType;
     }
 
-    // Get paginated media with uploader info
+    // Get paginated media with uploader info (excluding face enrollment)
     const { count, rows: media } = await EventMedia.findAndCountAll({
-      where: whereClause,
+      where: {
+        ...whereClause,
+        isFaceEnrollment: { [Op.not]: true }, // Exclude face enrollment images
+      },
       include: [
         {
           model: User,
@@ -903,11 +920,12 @@ export const getEventMediaBySlug = async (
       col: "uploadedBy",
     });
 
-    // Get media type breakdown
+    // Get media type breakdown (excluding face enrollment)
     const mediaTypeBreakdown = await EventMedia.findAll({
       where: {
         eventId: event.id,
         isActive: true,
+        isFaceEnrollment: { [Op.not]: true }, // Exclude face enrollment images
       },
       attributes: [
         "mediaType",
