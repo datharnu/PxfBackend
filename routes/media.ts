@@ -107,7 +107,6 @@ router.post(
 
 // ===== NEW S3-BASED UPLOAD ROUTES =====
 
-
 // Get S3 presigned URL for direct upload (RECOMMENDED METHOD)
 router.post(
   "/event/:eventId/s3-presigned-url",

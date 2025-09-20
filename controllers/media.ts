@@ -1341,11 +1341,7 @@ export const getEventFlyerS3PresignedUrl = async (
 ) => {
   try {
     const { fileName, mimeType, eventId } = req.body;
-    const userId = req.user?.id;
-
-    if (!userId) {
-      throw new BadRequestError("User authentication required");
-    }
+    const userId = req.user?.id; // Optional - can be undefined for public access
 
     if (!fileName || !mimeType) {
       throw new BadRequestError("File name and MIME type are required");
@@ -1362,7 +1358,9 @@ export const getEventFlyerS3PresignedUrl = async (
     const extension = fileName.split(".").pop()?.toLowerCase() || "jpg";
 
     // Create a unique key for event flyers
-    const key = `event-flyers/${userId}/${timestamp}-${randomId}.${extension}`;
+    // Use 'public' folder if no user ID (for event creation flow)
+    const userFolder = userId || "public";
+    const key = `event-flyers/${userFolder}/${timestamp}-${randomId}.${extension}`;
 
     // Generate presigned URL
     const presignedData = await S3Service.getPresignedUploadUrl(key, mimeType);
