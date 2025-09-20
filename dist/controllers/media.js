@@ -975,13 +975,9 @@ const submitS3Media = async (req, res, next) => {
         if (!event) {
             throw new notFound_1.default("Event not found");
         }
-        // Check if user is the event creator or has uploaded before
-        const existingUploads = await eventMedia_1.default.count({
-            where: { eventId, uploadedBy: userId },
-        });
-        if (existingUploads === 0 && event.userId !== userId) {
-            throw new unauthorized_1.default("Access denied to this event");
-        }
+        // Allow any authenticated user to upload to events
+        // Event creators and users accessing via slug/QR code can both upload
+        // No additional access restrictions needed since user is already authenticated
         // Check photo upload limits
         const currentUploads = await eventMedia_1.default.count({
             where: { eventId, uploadedBy: userId },
