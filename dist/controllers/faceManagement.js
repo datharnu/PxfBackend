@@ -36,7 +36,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.submitFaceEnrollmentFromS3 = exports.getFaceEnrollmentS3PresignedUrl = exports.getMediaFaceDetections = exports.getEventFaceProfiles = exports.getFaceDetectionStats = exports.deleteUserFaceProfile = exports.getUserFaceProfile = exports.enrollUserFace = exports.debugFaceDetections = exports.testFaceDetection = exports.testGoogleVisionAPI = void 0;
+exports.testS3UrlAccess = exports.submitFaceEnrollmentFromS3 = exports.getFaceEnrollmentS3PresignedUrl = exports.getMediaFaceDetections = exports.getEventFaceProfiles = exports.getFaceDetectionStats = exports.deleteUserFaceProfile = exports.getUserFaceProfile = exports.enrollUserFace = exports.debugFaceDetections = exports.testFaceDetection = exports.testGoogleVisionAPI = void 0;
 const http_status_codes_1 = require("http-status-codes");
 const event_1 = __importDefault(require("../models/event"));
 const eventMedia_1 = __importStar(require("../models/eventMedia"));
@@ -664,8 +664,8 @@ const getFaceEnrollmentS3PresignedUrl = async (req, res, next) => {
         const extension = fileName.split(".").pop()?.toLowerCase() || "jpg";
         // Create S3 path: faces/{eventId}/{userId}/timestamp-randomId.extension
         const key = `faces/${eventId}/${userId}/${timestamp}-${randomId}.${extension}`;
-        // Generate presigned URL
-        const presignedData = await s3Service_1.default.getPresignedUploadUrl(key, mimeType);
+        // Generate presigned URL for face enrollment with public access
+        const presignedData = await s3Service_1.default.getFaceEnrollmentPresignedUploadUrl(key, mimeType);
         res.status(http_status_codes_1.StatusCodes.OK).json({
             success: true,
             message: "Face enrollment presigned URL generated successfully",
@@ -830,3 +830,45 @@ const submitFaceEnrollmentFromS3 = async (req, res, next) => {
     }
 };
 exports.submitFaceEnrollmentFromS3 = submitFaceEnrollmentFromS3;
+// Test S3 URL accessibility
+const testS3UrlAccess = async (req, res, next) => {
+    try {
+        const { imageUrl } = req.body;
+        if (!imageUrl) {
+            throw new badRequest_1.default("Image URL is required");
+        }
+        console.log("Testing S3 URL accessibility:", imageUrl);
+        // Test URL accessibility
+        const isValidUrl = await googleVisionService_1.default.validateImageUrl(imageUrl);
+        return res.status(http_status_codes_1.StatusCodes.OK).json({
+            success: true,
+            message: "S3 URL accessibility test completed",
+            url: imageUrl,
+            isAccessible: isValidUrl,
+            troubleshooting: isValidUrl
+                ? {
+                    status: "URL is accessible",
+                    nextStep: "Face detection should work",
+                }
+                : {
+                    status: "URL is not accessible",
+                    possibleCauses: [
+                        "S3 bucket policy doesn't allow public read access",
+                        "File was not uploaded correctly",
+                        "Incorrect URL format",
+                        "S3 bucket region mismatch",
+                    ],
+                    solutions: [
+                        "Check S3 bucket policy for public read access",
+                        "Verify file exists in S3 bucket",
+                        "Ensure URL format: https://bucket.s3.region.amazonaws.com/key",
+                    ],
+                },
+        });
+    }
+    catch (error) {
+        console.error("S3 URL accessibility test error:", error);
+        next(error);
+    }
+};
+exports.testS3UrlAccess = testS3UrlAccess;

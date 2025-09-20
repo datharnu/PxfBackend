@@ -3,6 +3,7 @@ import multer from "multer";
 import {
   testGoogleVisionAPI,
   testFaceDetection,
+  testS3UrlAccess,
   debugFaceDetections,
   enrollUserFace,
   getUserFaceProfile,
@@ -50,6 +51,14 @@ router.post(
   [body("imageUrl").notEmpty().withMessage("Image URL is required")],
   validate,
   testFaceDetection
+);
+
+// Test S3 URL accessibility
+router.post(
+  "/test-s3-access",
+  [body("imageUrl").notEmpty().withMessage("Image URL is required")],
+  validate,
+  testS3UrlAccess
 );
 
 // Debug face detections

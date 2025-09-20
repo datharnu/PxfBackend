@@ -59,6 +59,46 @@ export class S3Service {
   }
 
   /**
+   * Upload face enrollment file to S3 with public read access
+   */
+  static async uploadFaceEnrollmentFile(
+    file: Buffer | Uint8Array | string,
+    key: string,
+    contentType: string,
+    metadata?: Record<string, string>
+  ): Promise<{ url: string; key: string }> {
+    try {
+      const command = new PutObjectCommand({
+        Bucket: BUCKET_NAME,
+        Key: key,
+        Body: file,
+        ContentType: contentType,
+        Metadata: metadata,
+        // Ensure face enrollment files are publicly readable
+        CacheControl: "public, max-age=31536000", // Cache for 1 year
+      });
+
+      await s3Client.send(command);
+
+      const url = `https://${BUCKET_NAME}.s3.${
+        process.env.AWS_REGION || "us-east-1"
+      }.amazonaws.com/${key}`;
+
+      return {
+        url,
+        key,
+      };
+    } catch (error) {
+      console.error("S3 face enrollment upload error:", error);
+      throw new Error(
+        `Failed to upload face enrollment file to S3: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
+    }
+  }
+
+  /**
    * Generate presigned URL for direct upload from frontend
    */
   static async getPresignedUploadUrl(
@@ -88,6 +128,43 @@ export class S3Service {
       console.error("S3 presigned URL error:", error);
       throw new Error(
         `Failed to generate presigned URL: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
+    }
+  }
+
+  /**
+   * Generate presigned URL for face enrollment upload with public access
+   */
+  static async getFaceEnrollmentPresignedUploadUrl(
+    key: string,
+    contentType: string,
+    expiresIn: number = 3600 // 1 hour
+  ): Promise<{ uploadUrl: string; key: string; url: string }> {
+    try {
+      const command = new PutObjectCommand({
+        Bucket: BUCKET_NAME,
+        Key: key,
+        ContentType: contentType,
+        CacheControl: "public, max-age=31536000", // Cache for 1 year
+        // Ensure face enrollment files are publicly accessible
+      });
+
+      const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn });
+      const url = `https://${BUCKET_NAME}.s3.${
+        process.env.AWS_REGION || "us-east-1"
+      }.amazonaws.com/${key}`;
+
+      return {
+        uploadUrl,
+        key,
+        url,
+      };
+    } catch (error) {
+      console.error("S3 face enrollment presigned URL error:", error);
+      throw new Error(
+        `Failed to generate face enrollment presigned URL: ${
           error instanceof Error ? error.message : "Unknown error"
         }`
       );

@@ -207,7 +207,10 @@ export class GoogleVisionService {
 
       const faces = result.faceAnnotations || [];
       console.log(`Google Vision detected ${faces.length} faces`);
-      console.log("Raw Google Vision response:", JSON.stringify(result, null, 2));
+      console.log(
+        "Raw Google Vision response:",
+        JSON.stringify(result, null, 2)
+      );
 
       return faces.map((face, index) => ({
         faceId: `google_face_${index}_${Date.now()}`,

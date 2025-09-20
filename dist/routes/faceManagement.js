@@ -36,6 +36,8 @@ const router = express_1.default.Router();
 router.get("/test", faceManagement_1.testGoogleVisionAPI);
 // Test face detection with specific image URL
 router.post("/test-face-detection", [(0, express_validator_1.body)("imageUrl").notEmpty().withMessage("Image URL is required")], customValidations_1.validate, faceManagement_1.testFaceDetection);
+// Test S3 URL accessibility
+router.post("/test-s3-access", [(0, express_validator_1.body)("imageUrl").notEmpty().withMessage("Image URL is required")], customValidations_1.validate, faceManagement_1.testS3UrlAccess);
 // Debug face detections
 router.get("/events/:eventId/debug", isAuthenticated_1.default, faceManagement_1.debugFaceDetections);
 // Face enrollment routes

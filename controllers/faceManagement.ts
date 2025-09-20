@@ -766,8 +766,11 @@ export const getFaceEnrollmentS3PresignedUrl = async (
     // Create S3 path: faces/{eventId}/{userId}/timestamp-randomId.extension
     const key = `faces/${eventId}/${userId}/${timestamp}-${randomId}.${extension}`;
 
-    // Generate presigned URL
-    const presignedData = await S3Service.getPresignedUploadUrl(key, mimeType);
+    // Generate presigned URL for face enrollment with public access
+    const presignedData = await S3Service.getFaceEnrollmentPresignedUploadUrl(
+      key,
+      mimeType
+    );
 
     res.status(StatusCodes.OK).json({
       success: true,
@@ -958,6 +961,55 @@ export const submitFaceEnrollmentFromS3 = async (
     }
   } catch (error) {
     console.error("Submit face enrollment from S3 error:", error);
+    next(error);
+  }
+};
+
+// Test S3 URL accessibility
+export const testS3UrlAccess = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { imageUrl } = req.body;
+
+    if (!imageUrl) {
+      throw new BadRequestError("Image URL is required");
+    }
+
+    console.log("Testing S3 URL accessibility:", imageUrl);
+
+    // Test URL accessibility
+    const isValidUrl = await GoogleVisionService.validateImageUrl(imageUrl);
+
+    return res.status(StatusCodes.OK).json({
+      success: true,
+      message: "S3 URL accessibility test completed",
+      url: imageUrl,
+      isAccessible: isValidUrl,
+      troubleshooting: isValidUrl
+        ? {
+            status: "URL is accessible",
+            nextStep: "Face detection should work",
+          }
+        : {
+            status: "URL is not accessible",
+            possibleCauses: [
+              "S3 bucket policy doesn't allow public read access",
+              "File was not uploaded correctly",
+              "Incorrect URL format",
+              "S3 bucket region mismatch",
+            ],
+            solutions: [
+              "Check S3 bucket policy for public read access",
+              "Verify file exists in S3 bucket",
+              "Ensure URL format: https://bucket.s3.region.amazonaws.com/key",
+            ],
+          },
+    });
+  } catch (error) {
+    console.error("S3 URL accessibility test error:", error);
     next(error);
   }
 };
