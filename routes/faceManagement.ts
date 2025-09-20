@@ -2,8 +2,6 @@ import express from "express";
 import multer from "multer";
 import {
   testGoogleVisionAPI,
-  testFaceDetection,
-  testS3UrlAccess,
   debugFaceDetections,
   enrollUserFace,
   getUserFaceProfile,
@@ -11,12 +9,8 @@ import {
   getFaceDetectionStats,
   getEventFaceProfiles,
   getMediaFaceDetections,
-  getFaceEnrollmentS3PresignedUrl,
-  submitFaceEnrollmentFromS3,
 } from "../controllers/faceManagement";
 import isUserAuthenticated from "../middlewares/isAuthenticated";
-import { body } from "express-validator";
-import { validate } from "../utils/customValidations";
 
 // Configure multer for face image uploads
 const storage = multer.memoryStorage();
@@ -44,22 +38,6 @@ const router = express.Router();
 
 // Test Google Vision API connection
 router.get("/test", testGoogleVisionAPI);
-
-// Test face detection with specific image URL
-router.post(
-  "/test-face-detection",
-  [body("imageUrl").notEmpty().withMessage("Image URL is required")],
-  validate,
-  testFaceDetection
-);
-
-// Test S3 URL accessibility
-router.post(
-  "/test-s3-access",
-  [body("imageUrl").notEmpty().withMessage("Image URL is required")],
-  validate,
-  testS3UrlAccess
-);
 
 // Debug face detections
 router.get("/events/:eventId/debug", isUserAuthenticated, debugFaceDetections);
@@ -97,34 +75,6 @@ router.get(
   "/media/:mediaId/faces",
   isUserAuthenticated,
   getMediaFaceDetections
-);
-
-// Face enrollment S3 presigned URL routes
-router.post(
-  "/events/:eventId/s3-presigned-url",
-  isUserAuthenticated,
-  [
-    body("fileName").notEmpty().withMessage("File name is required"),
-    body("mimeType").notEmpty().withMessage("MIME type is required"),
-  ],
-  validate,
-  getFaceEnrollmentS3PresignedUrl
-);
-
-router.post(
-  "/events/:eventId/submit-s3-enrollment",
-  isUserAuthenticated,
-  [
-    body("s3Key").notEmpty().withMessage("S3 key is required"),
-    body("fileName").notEmpty().withMessage("File name is required"),
-    body("mimeType").notEmpty().withMessage("MIME type is required"),
-    body("fileSize")
-      .optional()
-      .isInt({ min: 1 })
-      .withMessage("File size must be a positive integer"),
-  ],
-  validate,
-  submitFaceEnrollmentFromS3
 );
 
 export default router;

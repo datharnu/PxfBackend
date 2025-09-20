@@ -739,11 +739,22 @@ const submitFaceEnrollmentFromS3 = async (req, res, next) => {
         });
         // Validate image URL accessibility first
         console.log("Validating image URL accessibility...");
+        console.log("S3 URL to validate:", s3Url);
+        // Test URL accessibility with axios directly
+        try {
+            const axios = require('axios');
+            const response = await axios.head(s3Url, { timeout: 10000 });
+            console.log("Direct S3 URL check - Status:", response.status);
+            console.log("Direct S3 URL check - Headers:", response.headers);
+        }
+        catch (directError) {
+            console.error("Direct S3 URL check failed:", directError instanceof Error ? directError.message : String(directError));
+        }
         const isValidUrl = await googleVisionService_1.default.validateImageUrl(s3Url);
-        console.log("Image URL validation result:", isValidUrl);
+        console.log("Google Vision URL validation result:", isValidUrl);
         if (!isValidUrl) {
             await mediaRecord.destroy();
-            throw new badRequest_1.default("Image URL is not accessible. Please check if the file was uploaded correctly.");
+            throw new badRequest_1.default(`Image URL is not accessible. S3 URL: ${s3Url}. Please check if the file was uploaded correctly and the S3 bucket allows public read access.`);
         }
         // Now perform face enrollment using the S3 URL
         console.log("Starting face detection with Google Vision API...");

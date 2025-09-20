@@ -10,7 +10,6 @@ import BadRequestError from "../errors/badRequest";
 import NotFoundError from "../errors/notFound";
 import UnAuthorizedError from "../errors/unauthorized";
 import GoogleVisionService from "../utils/googleVisionService";
-import S3Service from "../utils/s3Service";
 
 // Test Google Vision API connection
 export const testGoogleVisionAPI = async (
@@ -37,58 +36,6 @@ export const testGoogleVisionAPI = async (
     }
   } catch (error) {
     console.error("Google Vision API test error:", error);
-    next(error);
-  }
-};
-
-// Test face detection with a specific image URL
-export const testFaceDetection = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    const { imageUrl } = req.body;
-
-    if (!imageUrl) {
-      throw new BadRequestError("Image URL is required");
-    }
-
-    console.log("Testing face detection with URL:", imageUrl);
-
-    // Test URL accessibility
-    const isValidUrl = await GoogleVisionService.validateImageUrl(imageUrl);
-    console.log("URL validation result:", isValidUrl);
-
-    if (!isValidUrl) {
-      return res.status(StatusCodes.BAD_REQUEST).json({
-        success: false,
-        message: "Image URL is not accessible",
-        url: imageUrl,
-        isValid: false,
-      });
-    }
-
-    // Test face detection
-    const faceDetections = await GoogleVisionService.detectFacesFromUrl(
-      imageUrl
-    );
-
-    return res.status(StatusCodes.OK).json({
-      success: true,
-      message: "Face detection test completed",
-      url: imageUrl,
-      isValid: true,
-      facesDetected: faceDetections.length,
-      faces: faceDetections.map((f) => ({
-        faceId: f.faceId,
-        confidence: f.confidence,
-        rectangle: f.faceRectangle,
-        attributes: f.faceAttributes,
-      })),
-    });
-  } catch (error) {
-    console.error("Face detection test error:", error);
     next(error);
   }
 };
@@ -200,24 +147,35 @@ export const enrollUserFace = async (
     let mediaRecord: any = null;
 
     if (faceImage) {
-      // Handle file upload - upload to S3 to avoid Cloudinary 10MB limit
-      const S3Service = require("../utils/s3Service").default;
+      // Handle file upload - upload to Cloudinary first
+      const { v2: cloudinary } = require("cloudinary");
 
-      // Generate unique key for face enrollment image
-      const timestamp = Date.now();
-      const randomId = Math.random().toString(36).substring(2, 15);
-      const extension =
-        faceImage.originalname?.split(".").pop()?.toLowerCase() || "jpg";
-      const key = `face-enrollment/${userId}/${eventId}/${timestamp}-${randomId}.${extension}`;
+      // Configure Cloudinary (if not already configured)
+      if (!cloudinary.config().cloud_name) {
+        cloudinary.config({
+          cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+          api_key: process.env.CLOUDINARY_API_KEY,
+          api_secret: process.env.CLOUDINARY_API_SECRET,
+        });
+      }
 
-      // Upload to S3
-      const uploadResult = await S3Service.uploadFile(
-        faceImage.buffer,
-        key,
-        faceImage.mimetype || "image/jpeg"
-      );
+      // Upload to Cloudinary
+      const uploadResult = await new Promise((resolve, reject) => {
+        cloudinary.uploader
+          .upload_stream(
+            {
+              folder: "face-enrollment",
+              resource_type: "image",
+            },
+            (error: any, result: any) => {
+              if (error) reject(error);
+              else resolve(result);
+            }
+          )
+          .end(faceImage.buffer);
+      });
 
-      imageUrl = uploadResult.url;
+      imageUrl = (uploadResult as any).secure_url;
 
       // Create a media record for the uploaded face image
       mediaRecord = await EventMedia.create({
@@ -228,7 +186,7 @@ export const enrollUserFace = async (
         fileName: faceImage.originalname || "face-enrollment.jpg",
         fileSize: faceImage.size || 0,
         mimeType: faceImage.mimetype || "image/jpeg",
-        s3Key: key, // Store S3 key instead of Cloudinary public ID
+        cloudinaryPublicId: (uploadResult as any).public_id,
         isFaceEnrollment: true, // Mark as face enrollment to exclude from upload limits
       });
     } else {
@@ -703,313 +661,6 @@ export const getMediaFaceDetections = async (
     });
   } catch (error) {
     console.error("Get media face detections error:", error);
-    next(error);
-  }
-};
-
-// Get S3 presigned URL for face enrollment upload
-export const getFaceEnrollmentS3PresignedUrl = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    const { eventId } = req.params;
-    const { fileName, mimeType } = req.body;
-    const userId = req.user?.id;
-
-    if (!userId) {
-      throw new BadRequestError("User authentication required");
-    }
-
-    if (!fileName || !mimeType) {
-      throw new BadRequestError("File name and MIME type are required");
-    }
-
-    // Validate file type for face enrollment (images only)
-    if (!mimeType.startsWith("image/")) {
-      throw new BadRequestError("Face enrollment must be an image file");
-    }
-
-    // Check if event exists and is active
-    const event = await Event.findByPk(eventId);
-    if (!event) {
-      throw new NotFoundError("Event not found");
-    }
-
-    if (!event.isActive) {
-      throw new BadRequestError("Event is not active");
-    }
-
-    // Check user's current face enrollment count (separate from regular media)
-    const existingFaceUploads = await EventMedia.count({
-      where: {
-        eventId,
-        uploadedBy: userId,
-        isFaceEnrollment: true, // Only count face enrollment uploads
-      },
-    });
-
-    // Face enrollment quota: 5 photos per user
-    const MAX_FACE_PHOTOS = 5;
-    if (existingFaceUploads >= MAX_FACE_PHOTOS) {
-      throw new BadRequestError(
-        `Maximum face enrollment photos reached (${MAX_FACE_PHOTOS}). Please delete existing face photos before uploading new ones.`
-      );
-    }
-
-    // Generate unique key for face enrollment
-    const timestamp = Date.now();
-    const randomId = Math.random().toString(36).substring(2, 15);
-    const extension = fileName.split(".").pop()?.toLowerCase() || "jpg";
-
-    // Create S3 path: faces/{eventId}/{userId}/timestamp-randomId.extension
-    const key = `faces/${eventId}/${userId}/${timestamp}-${randomId}.${extension}`;
-
-    // Generate presigned URL for face enrollment with public access
-    const presignedData = await S3Service.getFaceEnrollmentPresignedUploadUrl(
-      key,
-      mimeType
-    );
-
-    res.status(StatusCodes.OK).json({
-      success: true,
-      message: "Face enrollment presigned URL generated successfully",
-      data: {
-        uploadUrl: presignedData.uploadUrl,
-        key: presignedData.key,
-        url: presignedData.url,
-        expiresIn: 3600, // 1 hour
-        fileType: "face-enrollment",
-        quota: {
-          used: existingFaceUploads,
-          max: MAX_FACE_PHOTOS,
-          remaining: MAX_FACE_PHOTOS - existingFaceUploads,
-        },
-      },
-    });
-  } catch (error) {
-    console.error("Get face enrollment S3 presigned URL error:", error);
-    next(error);
-  }
-};
-
-// Submit face enrollment from S3 presigned URL
-export const submitFaceEnrollmentFromS3 = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    const { eventId } = req.params;
-    const { s3Key, fileName, fileSize, mimeType } = req.body;
-    const userId = req.user?.id;
-
-    if (!userId) {
-      throw new BadRequestError("User authentication required");
-    }
-
-    if (!s3Key || !fileName || !mimeType) {
-      throw new BadRequestError(
-        "S3 key, file name, and MIME type are required"
-      );
-    }
-
-    // Check if event exists and is active
-    const event = await Event.findByPk(eventId);
-    if (!event) {
-      throw new NotFoundError("Event not found");
-    }
-
-    if (!event.isActive) {
-      throw new BadRequestError("Event is not active");
-    }
-
-    // Check user's current face enrollment count
-    const existingFaceUploads = await EventMedia.count({
-      where: {
-        eventId,
-        uploadedBy: userId,
-        isFaceEnrollment: true,
-      },
-    });
-
-    const MAX_FACE_PHOTOS = 5;
-    if (existingFaceUploads >= MAX_FACE_PHOTOS) {
-      throw new BadRequestError(
-        `Maximum face enrollment photos reached (${MAX_FACE_PHOTOS}). Please delete existing face photos before uploading new ones.`
-      );
-    }
-
-    // Construct the S3 URL from the key
-    const s3Url = `https://${process.env.AWS_S3_BUCKET_NAME}.s3.${process.env.AWS_S3_REGION}.amazonaws.com/${s3Key}`;
-
-    console.log("Face enrollment S3 URL:", s3Url);
-    console.log("File details:", { fileName, fileSize, mimeType, s3Key });
-
-    // Create media record for face enrollment (marked with isFaceEnrollment: true)
-    const mediaRecord = await EventMedia.create({
-      eventId,
-      uploadedBy: userId,
-      mediaType: MediaType.IMAGE,
-      mediaUrl: s3Url,
-      fileName: fileName,
-      fileSize: fileSize || 0,
-      mimeType: mimeType,
-      s3Key: s3Key,
-      isFaceEnrollment: true, // Mark as face enrollment to exclude from regular media
-    });
-
-    // Validate image URL accessibility first
-    console.log("Validating image URL accessibility...");
-    const isValidUrl = await GoogleVisionService.validateImageUrl(s3Url);
-    console.log("Image URL validation result:", isValidUrl);
-
-    if (!isValidUrl) {
-      await mediaRecord.destroy();
-      throw new BadRequestError(
-        "Image URL is not accessible. Please check if the file was uploaded correctly."
-      );
-    }
-
-    // Now perform face enrollment using the S3 URL
-    console.log("Starting face detection with Google Vision API...");
-    const faceDetectionResult = await GoogleVisionService.detectFacesFromUrl(
-      s3Url
-    );
-    console.log("Face detection result:", {
-      facesDetected: faceDetectionResult.length,
-      detections: faceDetectionResult.map((f) => ({
-        faceId: f.faceId,
-        confidence: f.confidence,
-        rectangle: f.faceRectangle,
-      })),
-    });
-
-    if (faceDetectionResult.length === 0) {
-      // No face detected, delete the media record
-      await mediaRecord.destroy();
-      throw new BadRequestError(
-        "No face detected in the uploaded image. Please ensure the image contains a clear, well-lit face and try again."
-      );
-    }
-
-    // Use the first detected face
-    const detectedFace = faceDetectionResult[0];
-
-    // Check if user already has a face profile for this event
-    const existingProfile = await UserFaceProfile.findOne({
-      where: {
-        eventId,
-        userId,
-      },
-    });
-
-    if (existingProfile) {
-      // Update existing profile
-      await existingProfile.update({
-        enrollmentMediaId: mediaRecord.id, // Reference to the media record
-        faceId: detectedFace.faceId,
-        faceRectangle: detectedFace.faceRectangle,
-        faceAttributes: detectedFace.faceAttributes,
-        enrollmentConfidence: detectedFace.confidence || 0.8,
-        isActive: true,
-      });
-
-      res.status(StatusCodes.OK).json({
-        success: true,
-        message: "Face profile updated successfully",
-        data: {
-          profile: existingProfile,
-          faceDetection: detectedFace,
-          mediaRecord,
-          quota: {
-            used: existingFaceUploads + 1,
-            max: MAX_FACE_PHOTOS,
-            remaining: MAX_FACE_PHOTOS - (existingFaceUploads + 1),
-          },
-        },
-      });
-    } else {
-      // Create new face profile
-      const faceProfile = await UserFaceProfile.create({
-        eventId,
-        userId,
-        persistedFaceId: `face_${userId}_${eventId}_${Date.now()}`, // Generate unique persisted face ID
-        enrollmentMediaId: mediaRecord.id, // Reference to the media record
-        faceId: detectedFace.faceId,
-        faceRectangle: detectedFace.faceRectangle,
-        faceAttributes: detectedFace.faceAttributes,
-        enrollmentConfidence: detectedFace.confidence || 0.8,
-        isActive: true,
-      });
-
-      res.status(StatusCodes.CREATED).json({
-        success: true,
-        message: "Face enrolled successfully",
-        data: {
-          profile: faceProfile,
-          faceDetection: detectedFace,
-          mediaRecord,
-          quota: {
-            used: existingFaceUploads + 1,
-            max: MAX_FACE_PHOTOS,
-            remaining: MAX_FACE_PHOTOS - (existingFaceUploads + 1),
-          },
-        },
-      });
-    }
-  } catch (error) {
-    console.error("Submit face enrollment from S3 error:", error);
-    next(error);
-  }
-};
-
-// Test S3 URL accessibility
-export const testS3UrlAccess = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    const { imageUrl } = req.body;
-
-    if (!imageUrl) {
-      throw new BadRequestError("Image URL is required");
-    }
-
-    console.log("Testing S3 URL accessibility:", imageUrl);
-
-    // Test URL accessibility
-    const isValidUrl = await GoogleVisionService.validateImageUrl(imageUrl);
-
-    return res.status(StatusCodes.OK).json({
-      success: true,
-      message: "S3 URL accessibility test completed",
-      url: imageUrl,
-      isAccessible: isValidUrl,
-      troubleshooting: isValidUrl
-        ? {
-            status: "URL is accessible",
-            nextStep: "Face detection should work",
-          }
-        : {
-            status: "URL is not accessible",
-            possibleCauses: [
-              "S3 bucket policy doesn't allow public read access",
-              "File was not uploaded correctly",
-              "Incorrect URL format",
-              "S3 bucket region mismatch",
-            ],
-            solutions: [
-              "Check S3 bucket policy for public read access",
-              "Verify file exists in S3 bucket",
-              "Ensure URL format: https://bucket.s3.region.amazonaws.com/key",
-            ],
-          },
-    });
-  } catch (error) {
-    console.error("S3 URL accessibility test error:", error);
     next(error);
   }
 };
