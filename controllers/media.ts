@@ -13,6 +13,7 @@ import upload, {
   getFileUrl,
 } from "../utils/fileUpload";
 import FaceProcessingService from "../utils/faceProcessingService";
+import S3Service from "../utils/s3Service";
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -1151,3 +1152,202 @@ export const retrainFaceIdentification = async (
 
 // Middleware to handle file upload
 export const uploadMiddleware = upload.array("media", 10);
+
+// ===== S3-BASED FUNCTIONS (REPLACING CLOUDINARY) =====
+
+// Interface for S3 media URL submission
+interface S3MediaUrlData {
+  url: string;
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+  s3Key: string; // S3 object key instead of Cloudinary public ID
+}
+
+// Submit S3 media URLs (Frontend uploads directly to S3)
+export const submitS3Media = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { eventId } = req.params;
+    const { mediaUrls }: { mediaUrls: S3MediaUrlData[] } = req.body;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      throw new BadRequestError("User authentication required");
+    }
+
+    if (!mediaUrls || !Array.isArray(mediaUrls) || mediaUrls.length === 0) {
+      throw new BadRequestError("No media URLs provided");
+    }
+
+    // Verify event exists and user has access
+    const event = await Event.findByPk(eventId);
+    if (!event) {
+      throw new NotFoundError("Event not found");
+    }
+
+    // Check if user is the event creator or has uploaded before
+    const existingUploads = await EventMedia.count({
+      where: { eventId, uploadedBy: userId },
+    });
+
+    if (existingUploads === 0 && (event as any).userId !== userId) {
+      throw new UnAuthorizedError("Access denied to this event");
+    }
+
+    // Check photo upload limits
+    const currentUploads = await EventMedia.count({
+      where: { eventId, uploadedBy: userId },
+    });
+
+    const maxUploads =
+      event.photoCapLimit === "CUSTOM"
+        ? event.customPhotoCapLimit || 25
+        : parseInt(event.photoCapLimit);
+
+    if (currentUploads + mediaUrls.length > maxUploads) {
+      throw new BadRequestError(
+        `Upload limit exceeded. Maximum ${maxUploads} photos allowed per event.`
+      );
+    }
+
+    const uploadedMedia = [];
+
+    for (const mediaData of mediaUrls) {
+      // Validate S3 URLs belong to your bucket (security check)
+      const validS3Domain = `https://${process.env.AWS_S3_BUCKET_NAME}.s3.${
+        process.env.AWS_REGION || "us-east-1"
+      }.amazonaws.com/`;
+
+      if (!mediaData.url.startsWith(validS3Domain)) {
+        throw new BadRequestError(
+          "Invalid media URL - must be from your S3 bucket"
+        );
+      }
+
+      // Verify file exists in S3
+      const fileExists = await S3Service.fileExists(mediaData.s3Key);
+      if (!fileExists) {
+        throw new BadRequestError(`File not found in S3: ${mediaData.s3Key}`);
+      }
+
+      // Create media record
+      const mediaRecord = await EventMedia.create({
+        eventId,
+        uploadedBy: userId,
+        mediaUrl: mediaData.url,
+        mediaType: getMediaTypeFromMimeType(mediaData.mimeType),
+        fileName: mediaData.fileName,
+        fileSize: mediaData.fileSize,
+        mimeType: mediaData.mimeType,
+        s3Key: mediaData.s3Key, // Store S3 key instead of Cloudinary public ID
+        isFaceEnrollment: false,
+      });
+
+      uploadedMedia.push(mediaRecord);
+
+      // Process face detection for images
+      if (getMediaTypeFromMimeType(mediaData.mimeType) === MediaType.IMAGE) {
+        try {
+          await FaceProcessingService.processMediaForFaces(mediaRecord.id);
+        } catch (faceError) {
+          console.error("Face processing error:", faceError);
+          // Don't fail the upload if face processing fails
+        }
+      }
+    }
+
+    res.status(StatusCodes.CREATED).json({
+      success: true,
+      message: `Successfully uploaded ${uploadedMedia.length} media files`,
+      data: {
+        media: uploadedMedia,
+        uploadStats: {
+          totalUploads: currentUploads + uploadedMedia.length,
+          maxUploads,
+          remainingUploads:
+            maxUploads - (currentUploads + uploadedMedia.length),
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Submit S3 media error:", error);
+    next(error);
+  }
+};
+
+// Generate S3 presigned URL for direct upload from frontend
+export const getS3PresignedUrl = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { eventId } = req.params;
+    const { fileName, mimeType } = req.body;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      throw new BadRequestError("User authentication required");
+    }
+
+    if (!fileName || !mimeType) {
+      throw new BadRequestError("File name and MIME type are required");
+    }
+
+    // Verify event exists and user has access
+    const event = await Event.findByPk(eventId);
+    if (!event) {
+      throw new NotFoundError("Event not found");
+    }
+
+    // Check upload limits
+    const currentUploads = await EventMedia.count({
+      where: { eventId, uploadedBy: userId },
+    });
+
+    const maxUploads =
+      event.photoCapLimit === "CUSTOM"
+        ? event.customPhotoCapLimit || 25
+        : parseInt(event.photoCapLimit);
+
+    if (currentUploads >= maxUploads) {
+      throw new BadRequestError(
+        `Upload limit reached. Maximum ${maxUploads} photos allowed per event.`
+      );
+    }
+
+    // Generate unique key for the file
+    const key = S3Service.generateKey(
+      eventId,
+      userId,
+      fileName,
+      getMediaTypeFromMimeType(mimeType)
+    );
+
+    // Generate presigned URL
+    const presignedData = await S3Service.getPresignedUploadUrl(key, mimeType);
+
+    res.status(StatusCodes.OK).json({
+      success: true,
+      message: "Presigned URL generated successfully",
+      data: {
+        uploadUrl: presignedData.uploadUrl,
+        key: presignedData.key,
+        url: presignedData.url,
+        expiresIn: 3600, // 1 hour
+        uploadStats: {
+          currentUploads,
+          maxUploads,
+          remainingUploads: maxUploads - currentUploads,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Get S3 presigned URL error:", error);
+    next(error);
+  }
+};

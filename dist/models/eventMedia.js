@@ -124,6 +124,12 @@ EventMedia.init({
         allowNull: true,
         field: "cloudinary_public_id",
     },
+    s3Key: {
+        type: sequelize_1.DataTypes.STRING,
+        allowNull: true,
+        field: "s3_key",
+        comment: "S3 object key for the uploaded file",
+    },
     isFaceEnrollment: {
         type: sequelize_1.DataTypes.BOOLEAN,
         allowNull: true,

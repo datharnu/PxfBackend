@@ -444,7 +444,7 @@ export class GoogleVisionService {
       const response = await axios.get(imageUrl, {
         responseType: "arraybuffer",
         timeout: 30000, // 30 seconds timeout
-        maxContentLength: 200 * 1024 * 1024, // 200MB max (matching video limit)
+        maxContentLength: 100 * 1024 * 1024, // 100MB max (for images) (matching video limit)
       });
       return Buffer.from(response.data);
     } catch (error) {

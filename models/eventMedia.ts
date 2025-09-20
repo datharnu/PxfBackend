@@ -17,7 +17,8 @@ interface EventMediaAttributes {
   fileName: string; // Original filename
   fileSize: number; // File size in bytes
   mimeType: string; // MIME type of the file
-  cloudinaryPublicId?: string;
+  cloudinaryPublicId?: string; // Cloudinary public ID (legacy)
+  s3Key?: string; // S3 object key
   isFaceEnrollment?: boolean; // Flag to indicate if this is a face enrollment image
   isActive?: boolean;
   createdAt: Date;
@@ -42,6 +43,7 @@ class EventMedia
   public mediaType!: MediaType;
   public mediaUrl!: string;
   public cloudinaryPublicId?: string;
+  public s3Key?: string;
   public fileName!: string;
   public fileSize!: number;
   public mimeType!: string;
@@ -166,6 +168,12 @@ EventMedia.init(
       type: DataTypes.STRING,
       allowNull: true,
       field: "cloudinary_public_id",
+    },
+    s3Key: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      field: "s3_key",
+      comment: "S3 object key for the uploaded file",
     },
     isFaceEnrollment: {
       type: DataTypes.BOOLEAN,

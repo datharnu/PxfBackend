@@ -14,6 +14,8 @@ import {
   uploadMiddleware,
   submitCloudinaryMedia,
   getCloudinarySignature,
+  submitS3Media,
+  getS3PresignedUrl,
   getMediaWithUserFaces,
   getEventFaceDetections,
   getEventFaceStats,
@@ -67,7 +69,7 @@ router.get(
   getCloudinarySignature
 );
 
-// Submit media URLs after Cloudinary upload (MAIN UPLOAD METHOD)
+// Submit media URLs after Cloudinary upload (LEGACY - DEPRECATED)
 router.post(
   "/event/:eventId/submit-media",
   [
@@ -85,6 +87,38 @@ router.post(
   ],
   validate,
   submitCloudinaryMedia
+);
+
+// ===== NEW S3-BASED UPLOAD ROUTES =====
+
+// Get S3 presigned URL for direct upload (RECOMMENDED METHOD)
+router.post(
+  "/event/:eventId/s3-presigned-url",
+  [
+    param("eventId").isUUID().withMessage("Event ID must be a valid UUID"),
+    body("fileName").notEmpty().withMessage("File name is required"),
+    body("mimeType").notEmpty().withMessage("MIME type is required"),
+  ],
+  validate,
+  getS3PresignedUrl
+);
+
+// Submit media URLs after S3 upload (NEW MAIN UPLOAD METHOD)
+router.post(
+  "/event/:eventId/submit-s3-media",
+  [
+    param("eventId").isUUID().withMessage("Event ID must be a valid UUID"),
+    body("mediaUrls").isArray().withMessage("Media URLs must be an array"),
+    body("mediaUrls.*.url").isURL().withMessage("Invalid media URL"),
+    body("mediaUrls.*.fileName").notEmpty().withMessage("File name required"),
+    body("mediaUrls.*.fileSize")
+      .isNumeric()
+      .withMessage("File size must be numeric"),
+    body("mediaUrls.*.mimeType").notEmpty().withMessage("MIME type required"),
+    body("mediaUrls.*.s3Key").notEmpty().withMessage("S3 key is required"),
+  ],
+  validate,
+  submitS3Media
 );
 
 // Get all media for an event

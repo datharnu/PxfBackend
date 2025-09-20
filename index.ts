@@ -36,8 +36,8 @@ const PORT = process.env.PORT || 3000;
 // );
 
 app.use(cors());
-app.use(express.json({ limit: "50mb" })); // Increase limit to handle large payloads
-app.use(express.urlencoded({ extended: false, limit: "50mb" })); // Increase limit for form data
+app.use(express.json({ limit: "250mb" })); // Increase limit to handle large payloads (200MB videos + metadata)
+app.use(express.urlencoded({ extended: false, limit: "250mb" })); // Increase limit for form data
 app.use(cookieParser());
 
 // Serve static files (uploaded media)
