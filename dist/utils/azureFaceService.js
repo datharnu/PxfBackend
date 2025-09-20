@@ -310,7 +310,7 @@ class AzureFaceService {
             const response = await axios_1.default.get(imageUrl, {
                 responseType: "arraybuffer",
                 timeout: 30000, // 30 seconds timeout
-                maxContentLength: 50 * 1024 * 1024, // 50MB max (matching image limit)
+                maxContentLength: 100 * 1024 * 1024, // 100MB max (matching image limit)
             });
             return Buffer.from(response.data);
         }
