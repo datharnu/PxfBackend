@@ -160,31 +160,16 @@ const enrollUserFace = async (req, res, next) => {
         let imageUrl;
         let mediaRecord = null;
         if (faceImage) {
-            // Handle file upload - upload to Cloudinary first
-            const { v2: cloudinary } = require("cloudinary");
-            // Configure Cloudinary (if not already configured)
-            if (!cloudinary.config().cloud_name) {
-                cloudinary.config({
-                    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-                    api_key: process.env.CLOUDINARY_API_KEY,
-                    api_secret: process.env.CLOUDINARY_API_SECRET,
-                });
-            }
-            // Upload to Cloudinary
-            const uploadResult = await new Promise((resolve, reject) => {
-                cloudinary.uploader
-                    .upload_stream({
-                    folder: "face-enrollment",
-                    resource_type: "image",
-                }, (error, result) => {
-                    if (error)
-                        reject(error);
-                    else
-                        resolve(result);
-                })
-                    .end(faceImage.buffer);
-            });
-            imageUrl = uploadResult.secure_url;
+            // Handle file upload - upload to S3 to avoid Cloudinary 10MB limit
+            const S3Service = require("../utils/s3Service").default;
+            // Generate unique key for face enrollment image
+            const timestamp = Date.now();
+            const randomId = Math.random().toString(36).substring(2, 15);
+            const extension = faceImage.originalname?.split(".").pop()?.toLowerCase() || "jpg";
+            const key = `face-enrollment/${userId}/${eventId}/${timestamp}-${randomId}.${extension}`;
+            // Upload to S3
+            const uploadResult = await S3Service.uploadFile(faceImage.buffer, key, faceImage.mimetype || "image/jpeg");
+            imageUrl = uploadResult.url;
             // Create a media record for the uploaded face image
             mediaRecord = await eventMedia_1.default.create({
                 eventId,
@@ -194,7 +179,7 @@ const enrollUserFace = async (req, res, next) => {
                 fileName: faceImage.originalname || "face-enrollment.jpg",
                 fileSize: faceImage.size || 0,
                 mimeType: faceImage.mimetype || "image/jpeg",
-                cloudinaryPublicId: uploadResult.public_id,
+                s3Key: key, // Store S3 key instead of Cloudinary public ID
                 isFaceEnrollment: true, // Mark as face enrollment to exclude from upload limits
             });
         }

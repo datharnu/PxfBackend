@@ -147,35 +147,24 @@ export const enrollUserFace = async (
     let mediaRecord: any = null;
 
     if (faceImage) {
-      // Handle file upload - upload to Cloudinary first
-      const { v2: cloudinary } = require("cloudinary");
+      // Handle file upload - upload to S3 to avoid Cloudinary 10MB limit
+      const S3Service = require("../utils/s3Service").default;
 
-      // Configure Cloudinary (if not already configured)
-      if (!cloudinary.config().cloud_name) {
-        cloudinary.config({
-          cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-          api_key: process.env.CLOUDINARY_API_KEY,
-          api_secret: process.env.CLOUDINARY_API_SECRET,
-        });
-      }
+      // Generate unique key for face enrollment image
+      const timestamp = Date.now();
+      const randomId = Math.random().toString(36).substring(2, 15);
+      const extension =
+        faceImage.originalname?.split(".").pop()?.toLowerCase() || "jpg";
+      const key = `face-enrollment/${userId}/${eventId}/${timestamp}-${randomId}.${extension}`;
 
-      // Upload to Cloudinary
-      const uploadResult = await new Promise((resolve, reject) => {
-        cloudinary.uploader
-          .upload_stream(
-            {
-              folder: "face-enrollment",
-              resource_type: "image",
-            },
-            (error: any, result: any) => {
-              if (error) reject(error);
-              else resolve(result);
-            }
-          )
-          .end(faceImage.buffer);
-      });
+      // Upload to S3
+      const uploadResult = await S3Service.uploadFile(
+        faceImage.buffer,
+        key,
+        faceImage.mimetype || "image/jpeg"
+      );
 
-      imageUrl = (uploadResult as any).secure_url;
+      imageUrl = uploadResult.url;
 
       // Create a media record for the uploaded face image
       mediaRecord = await EventMedia.create({
@@ -186,7 +175,7 @@ export const enrollUserFace = async (
         fileName: faceImage.originalname || "face-enrollment.jpg",
         fileSize: faceImage.size || 0,
         mimeType: faceImage.mimetype || "image/jpeg",
-        cloudinaryPublicId: (uploadResult as any).public_id,
+        s3Key: key, // Store S3 key instead of Cloudinary public ID
         isFaceEnrollment: true, // Mark as face enrollment to exclude from upload limits
       });
     } else {
