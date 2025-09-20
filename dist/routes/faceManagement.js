@@ -34,6 +34,8 @@ const upload = (0, multer_1.default)({
 const router = express_1.default.Router();
 // Test Google Vision API connection
 router.get("/test", faceManagement_1.testGoogleVisionAPI);
+// Test face detection with specific image URL
+router.post("/test-face-detection", [(0, express_validator_1.body)("imageUrl").notEmpty().withMessage("Image URL is required")], customValidations_1.validate, faceManagement_1.testFaceDetection);
 // Debug face detections
 router.get("/events/:eventId/debug", isAuthenticated_1.default, faceManagement_1.debugFaceDetections);
 // Face enrollment routes

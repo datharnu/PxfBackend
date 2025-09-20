@@ -2,6 +2,7 @@ import express from "express";
 import multer from "multer";
 import {
   testGoogleVisionAPI,
+  testFaceDetection,
   debugFaceDetections,
   enrollUserFace,
   getUserFaceProfile,
@@ -42,6 +43,14 @@ const router = express.Router();
 
 // Test Google Vision API connection
 router.get("/test", testGoogleVisionAPI);
+
+// Test face detection with specific image URL
+router.post(
+  "/test-face-detection",
+  [body("imageUrl").notEmpty().withMessage("Image URL is required")],
+  validate,
+  testFaceDetection
+);
 
 // Debug face detections
 router.get("/events/:eventId/debug", isUserAuthenticated, debugFaceDetections);

@@ -184,6 +184,16 @@ export class GoogleVisionService {
     try {
       console.log("Google Vision API - Detecting faces from URL:", imageUrl);
 
+      // First validate the URL is accessible
+      console.log("Validating image URL before processing...");
+      const isValidUrl = await this.validateImageUrl(imageUrl);
+      console.log("Image URL validation result:", isValidUrl);
+
+      if (!isValidUrl) {
+        console.error("Image URL is not accessible:", imageUrl);
+        throw new Error("Image URL is not accessible or invalid");
+      }
+
       const [result] = await visionClient.faceDetection({
         image: {
           source: {
@@ -197,6 +207,7 @@ export class GoogleVisionService {
 
       const faces = result.faceAnnotations || [];
       console.log(`Google Vision detected ${faces.length} faces`);
+      console.log("Raw Google Vision response:", JSON.stringify(result, null, 2));
 
       return faces.map((face, index) => ({
         faceId: `google_face_${index}_${Date.now()}`,

@@ -41,6 +41,58 @@ export const testGoogleVisionAPI = async (
   }
 };
 
+// Test face detection with a specific image URL
+export const testFaceDetection = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { imageUrl } = req.body;
+
+    if (!imageUrl) {
+      throw new BadRequestError("Image URL is required");
+    }
+
+    console.log("Testing face detection with URL:", imageUrl);
+
+    // Test URL accessibility
+    const isValidUrl = await GoogleVisionService.validateImageUrl(imageUrl);
+    console.log("URL validation result:", isValidUrl);
+
+    if (!isValidUrl) {
+      return res.status(StatusCodes.BAD_REQUEST).json({
+        success: false,
+        message: "Image URL is not accessible",
+        url: imageUrl,
+        isValid: false,
+      });
+    }
+
+    // Test face detection
+    const faceDetections = await GoogleVisionService.detectFacesFromUrl(
+      imageUrl
+    );
+
+    return res.status(StatusCodes.OK).json({
+      success: true,
+      message: "Face detection test completed",
+      url: imageUrl,
+      isValid: true,
+      facesDetected: faceDetections.length,
+      faces: faceDetections.map((f) => ({
+        faceId: f.faceId,
+        confidence: f.confidence,
+        rectangle: f.faceRectangle,
+        attributes: f.faceAttributes,
+      })),
+    });
+  } catch (error) {
+    console.error("Face detection test error:", error);
+    next(error);
+  }
+};
+
 // Debug face detections for an event
 export const debugFaceDetections = async (
   req: Request,
@@ -789,6 +841,9 @@ export const submitFaceEnrollmentFromS3 = async (
     // Construct the S3 URL from the key
     const s3Url = `https://${process.env.AWS_S3_BUCKET_NAME}.s3.${process.env.AWS_S3_REGION}.amazonaws.com/${s3Key}`;
 
+    console.log("Face enrollment S3 URL:", s3Url);
+    console.log("File details:", { fileName, fileSize, mimeType, s3Key });
+
     // Create media record for face enrollment (marked with isFaceEnrollment: true)
     const mediaRecord = await EventMedia.create({
       eventId,
@@ -802,15 +857,38 @@ export const submitFaceEnrollmentFromS3 = async (
       isFaceEnrollment: true, // Mark as face enrollment to exclude from regular media
     });
 
+    // Validate image URL accessibility first
+    console.log("Validating image URL accessibility...");
+    const isValidUrl = await GoogleVisionService.validateImageUrl(s3Url);
+    console.log("Image URL validation result:", isValidUrl);
+
+    if (!isValidUrl) {
+      await mediaRecord.destroy();
+      throw new BadRequestError(
+        "Image URL is not accessible. Please check if the file was uploaded correctly."
+      );
+    }
+
     // Now perform face enrollment using the S3 URL
+    console.log("Starting face detection with Google Vision API...");
     const faceDetectionResult = await GoogleVisionService.detectFacesFromUrl(
       s3Url
     );
+    console.log("Face detection result:", {
+      facesDetected: faceDetectionResult.length,
+      detections: faceDetectionResult.map((f) => ({
+        faceId: f.faceId,
+        confidence: f.confidence,
+        rectangle: f.faceRectangle,
+      })),
+    });
 
     if (faceDetectionResult.length === 0) {
       // No face detected, delete the media record
       await mediaRecord.destroy();
-      throw new BadRequestError("No face detected in the uploaded image");
+      throw new BadRequestError(
+        "No face detected in the uploaded image. Please ensure the image contains a clear, well-lit face and try again."
+      );
     }
 
     // Use the first detected face
