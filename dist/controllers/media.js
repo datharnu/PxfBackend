@@ -52,30 +52,42 @@ const s3Service_1 = __importDefault(require("../utils/s3Service"));
 // Helper function to get upload limits based on user role and event settings
 const getUploadLimits = (event, userId) => {
     const isCreator = event.createdBy === userId;
-    // Guest limits (existing logic)
-    const guestLimit = event.photoCapLimit === "CUSTOM"
-        ? event.customPhotoCapLimit || 25
-        : parseInt(event.photoCapLimit);
-    // Creator limits based on guest count
-    let creatorLimit = 20; // Default for small events
+    // Define upload limits based on guest count
+    let creatorLimit = 20;
+    let guestLimit = 5;
     switch (event.guestLimit) {
         case "10":
-            creatorLimit = 20; // 10 guests -> creator can upload 20
+            creatorLimit = 20;
+            guestLimit = 5;
             break;
         case "100":
-            creatorLimit = 30; // 100 guests -> creator can upload 30
+            creatorLimit = 30;
+            guestLimit = 10;
             break;
         case "250":
+            creatorLimit = 50;
+            guestLimit = 15;
+            break;
         case "500":
-            creatorLimit = 50; // 250-500 guests -> creator can upload 50
+            creatorLimit = 50;
+            guestLimit = 20;
             break;
         case "800":
+            creatorLimit = 80;
+            guestLimit = 25;
+            break;
         case "1000":
+            creatorLimit = 80;
+            guestLimit = 25;
+            break;
         case "CUSTOM":
-            creatorLimit = 80; // 800+ guests -> creator can upload 80
+            creatorLimit = 80;
+            // For custom plans, use the event's custom photo cap limit for guests
+            guestLimit = event.customPhotoCapLimit || 25;
             break;
         default:
             creatorLimit = 20;
+            guestLimit = 5;
     }
     return {
         isCreator,
@@ -345,10 +357,10 @@ const getUserEventUploads = async (req, res, next) => {
             },
             order: [["createdAt", "DESC"]],
         });
-        // Get upload statistics
+        // Get upload statistics using new tiered limits
         const totalUploads = userUploads.length;
-        const photoCapLimit = parseInt(event.photoCapLimit);
-        const remainingUploads = photoCapLimit - totalUploads;
+        const { maxUploads, isCreator, userType } = getUploadLimits(event, userId);
+        const remainingUploads = maxUploads - totalUploads;
         // Group by media type
         const uploadsByType = userUploads.reduce((acc, upload) => {
             const type = upload.mediaType;
@@ -366,7 +378,9 @@ const getUserEventUploads = async (req, res, next) => {
             stats: {
                 totalUploads,
                 remainingUploads,
-                photoCapLimit,
+                maxUploads,
+                userType,
+                isCreator,
                 imagesCount: uploadsByType[eventMedia_1.MediaType.IMAGE]?.length || 0,
                 videosCount: uploadsByType[eventMedia_1.MediaType.VIDEO]?.length || 0,
             },
