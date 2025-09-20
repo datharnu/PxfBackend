@@ -24,8 +24,7 @@ class S3Service {
                 Body: file,
                 ContentType: contentType,
                 Metadata: metadata,
-                // Enable CORS for web access
-                ACL: "public-read", // or use bucket policy for better security
+                // ACL removed - using bucket policy for public access instead
             });
             await s3Client.send(command);
             const url = `https://${BUCKET_NAME}.s3.${process.env.AWS_REGION || "us-east-1"}.amazonaws.com/${key}`;
@@ -49,7 +48,7 @@ class S3Service {
                 Bucket: BUCKET_NAME,
                 Key: key,
                 ContentType: contentType,
-                ACL: "public-read",
+                // ACL removed - using bucket policy for public access instead
             });
             const uploadUrl = await (0, s3_request_presigner_1.getSignedUrl)(s3Client, command, { expiresIn });
             const url = `https://${BUCKET_NAME}.s3.${process.env.AWS_REGION || "us-east-1"}.amazonaws.com/${key}`;

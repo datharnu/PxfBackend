@@ -35,8 +35,7 @@ export class S3Service {
         Body: file,
         ContentType: contentType,
         Metadata: metadata,
-        // Enable CORS for web access
-        ACL: "public-read", // or use bucket policy for better security
+        // ACL removed - using bucket policy for public access instead
       });
 
       await s3Client.send(command);
@@ -72,7 +71,7 @@ export class S3Service {
         Bucket: BUCKET_NAME,
         Key: key,
         ContentType: contentType,
-        ACL: "public-read",
+        // ACL removed - using bucket policy for public access instead
       });
 
       const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn });

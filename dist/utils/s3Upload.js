@@ -80,7 +80,7 @@ const upload = (0, multer_1.default)({
     storage: (0, multer_s3_1.default)({
         s3: s3Client,
         bucket: BUCKET_NAME,
-        acl: "public-read",
+        // acl removed - using bucket policy for public access instead
         key: function (req, file, cb) {
             // Generate unique key for the file
             const eventId = req.params.eventId || req.body.eventId;

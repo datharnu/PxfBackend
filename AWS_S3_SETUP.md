@@ -23,6 +23,8 @@ AWS_S3_BUCKET_NAME=your-bucket-name
 
 ### 2. Bucket Policy
 
+**IMPORTANT**: Modern S3 buckets have ACLs disabled by default. Use bucket policies instead for public access.
+
 Add this bucket policy to allow public read access:
 
 ```json
@@ -39,6 +41,8 @@ Add this bucket policy to allow public read access:
   ]
 }
 ```
+
+**Note**: If your bucket was created with ACLs enabled, you can disable them in the bucket's "Permissions" tab under "Object Ownership" → "ACLs disabled (recommended)".
 
 ### 3. CORS Configuration
 

@@ -53,7 +53,7 @@ const upload = multer({
   storage: multerS3({
     s3: s3Client,
     bucket: BUCKET_NAME,
-    acl: "public-read",
+    // acl removed - using bucket policy for public access instead
     key: function (
       req: Request,
       file: Express.Multer.File,
