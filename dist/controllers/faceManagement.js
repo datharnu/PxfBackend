@@ -36,7 +36,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.testS3UrlAccess = exports.submitFaceEnrollmentFromS3 = exports.getFaceEnrollmentS3PresignedUrl = exports.getMediaFaceDetections = exports.getEventFaceProfiles = exports.getFaceDetectionStats = exports.deleteUserFaceProfile = exports.getUserFaceProfile = exports.enrollUserFace = exports.debugFaceDetections = exports.testFaceDetection = exports.testGoogleVisionAPI = void 0;
+exports.getMediaFaceDetections = exports.getEventFaceProfiles = exports.getFaceDetectionStats = exports.deleteUserFaceProfile = exports.getUserFaceProfile = exports.enrollUserFace = exports.debugFaceDetections = exports.testGoogleVisionAPI = void 0;
 const http_status_codes_1 = require("http-status-codes");
 const event_1 = __importDefault(require("../models/event"));
 const eventMedia_1 = __importStar(require("../models/eventMedia"));
@@ -47,7 +47,6 @@ const badRequest_1 = __importDefault(require("../errors/badRequest"));
 const notFound_1 = __importDefault(require("../errors/notFound"));
 const unauthorized_1 = __importDefault(require("../errors/unauthorized"));
 const googleVisionService_1 = __importDefault(require("../utils/googleVisionService"));
-const s3Service_1 = __importDefault(require("../utils/s3Service"));
 // Test Google Vision API connection
 const testGoogleVisionAPI = async (req, res, next) => {
     try {
@@ -74,47 +73,6 @@ const testGoogleVisionAPI = async (req, res, next) => {
     }
 };
 exports.testGoogleVisionAPI = testGoogleVisionAPI;
-// Test face detection with a specific image URL
-const testFaceDetection = async (req, res, next) => {
-    try {
-        const { imageUrl } = req.body;
-        if (!imageUrl) {
-            throw new badRequest_1.default("Image URL is required");
-        }
-        console.log("Testing face detection with URL:", imageUrl);
-        // Test URL accessibility
-        const isValidUrl = await googleVisionService_1.default.validateImageUrl(imageUrl);
-        console.log("URL validation result:", isValidUrl);
-        if (!isValidUrl) {
-            return res.status(http_status_codes_1.StatusCodes.BAD_REQUEST).json({
-                success: false,
-                message: "Image URL is not accessible",
-                url: imageUrl,
-                isValid: false,
-            });
-        }
-        // Test face detection
-        const faceDetections = await googleVisionService_1.default.detectFacesFromUrl(imageUrl);
-        return res.status(http_status_codes_1.StatusCodes.OK).json({
-            success: true,
-            message: "Face detection test completed",
-            url: imageUrl,
-            isValid: true,
-            facesDetected: faceDetections.length,
-            faces: faceDetections.map((f) => ({
-                faceId: f.faceId,
-                confidence: f.confidence,
-                rectangle: f.faceRectangle,
-                attributes: f.faceAttributes,
-            })),
-        });
-    }
-    catch (error) {
-        console.error("Face detection test error:", error);
-        next(error);
-    }
-};
-exports.testFaceDetection = testFaceDetection;
 // Debug face detections for an event
 const debugFaceDetections = async (req, res, next) => {
     try {
@@ -202,16 +160,31 @@ const enrollUserFace = async (req, res, next) => {
         let imageUrl;
         let mediaRecord = null;
         if (faceImage) {
-            // Handle file upload - upload to S3 to avoid Cloudinary 10MB limit
-            const S3Service = require("../utils/s3Service").default;
-            // Generate unique key for face enrollment image
-            const timestamp = Date.now();
-            const randomId = Math.random().toString(36).substring(2, 15);
-            const extension = faceImage.originalname?.split(".").pop()?.toLowerCase() || "jpg";
-            const key = `face-enrollment/${userId}/${eventId}/${timestamp}-${randomId}.${extension}`;
-            // Upload to S3
-            const uploadResult = await S3Service.uploadFile(faceImage.buffer, key, faceImage.mimetype || "image/jpeg");
-            imageUrl = uploadResult.url;
+            // Handle file upload - upload to Cloudinary first
+            const { v2: cloudinary } = require("cloudinary");
+            // Configure Cloudinary (if not already configured)
+            if (!cloudinary.config().cloud_name) {
+                cloudinary.config({
+                    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+                    api_key: process.env.CLOUDINARY_API_KEY,
+                    api_secret: process.env.CLOUDINARY_API_SECRET,
+                });
+            }
+            // Upload to Cloudinary
+            const uploadResult = await new Promise((resolve, reject) => {
+                cloudinary.uploader
+                    .upload_stream({
+                    folder: "face-enrollment",
+                    resource_type: "image",
+                }, (error, result) => {
+                    if (error)
+                        reject(error);
+                    else
+                        resolve(result);
+                })
+                    .end(faceImage.buffer);
+            });
+            imageUrl = uploadResult.secure_url;
             // Create a media record for the uploaded face image
             mediaRecord = await eventMedia_1.default.create({
                 eventId,
@@ -221,7 +194,7 @@ const enrollUserFace = async (req, res, next) => {
                 fileName: faceImage.originalname || "face-enrollment.jpg",
                 fileSize: faceImage.size || 0,
                 mimeType: faceImage.mimetype || "image/jpeg",
-                s3Key: key, // Store S3 key instead of Cloudinary public ID
+                cloudinaryPublicId: uploadResult.public_id,
                 isFaceEnrollment: true, // Mark as face enrollment to exclude from upload limits
             });
         }
@@ -621,265 +594,3 @@ const getMediaFaceDetections = async (req, res, next) => {
     }
 };
 exports.getMediaFaceDetections = getMediaFaceDetections;
-// Get S3 presigned URL for face enrollment upload
-const getFaceEnrollmentS3PresignedUrl = async (req, res, next) => {
-    try {
-        const { eventId } = req.params;
-        const { fileName, mimeType } = req.body;
-        const userId = req.user?.id;
-        if (!userId) {
-            throw new badRequest_1.default("User authentication required");
-        }
-        if (!fileName || !mimeType) {
-            throw new badRequest_1.default("File name and MIME type are required");
-        }
-        // Validate file type for face enrollment (images only)
-        if (!mimeType.startsWith("image/")) {
-            throw new badRequest_1.default("Face enrollment must be an image file");
-        }
-        // Check if event exists and is active
-        const event = await event_1.default.findByPk(eventId);
-        if (!event) {
-            throw new notFound_1.default("Event not found");
-        }
-        if (!event.isActive) {
-            throw new badRequest_1.default("Event is not active");
-        }
-        // Check user's current face enrollment count (separate from regular media)
-        const existingFaceUploads = await eventMedia_1.default.count({
-            where: {
-                eventId,
-                uploadedBy: userId,
-                isFaceEnrollment: true, // Only count face enrollment uploads
-            },
-        });
-        // Face enrollment quota: 5 photos per user
-        const MAX_FACE_PHOTOS = 5;
-        if (existingFaceUploads >= MAX_FACE_PHOTOS) {
-            throw new badRequest_1.default(`Maximum face enrollment photos reached (${MAX_FACE_PHOTOS}). Please delete existing face photos before uploading new ones.`);
-        }
-        // Generate unique key for face enrollment
-        const timestamp = Date.now();
-        const randomId = Math.random().toString(36).substring(2, 15);
-        const extension = fileName.split(".").pop()?.toLowerCase() || "jpg";
-        // Create S3 path: faces/{eventId}/{userId}/timestamp-randomId.extension
-        const key = `faces/${eventId}/${userId}/${timestamp}-${randomId}.${extension}`;
-        // Generate presigned URL for face enrollment with public access
-        const presignedData = await s3Service_1.default.getFaceEnrollmentPresignedUploadUrl(key, mimeType);
-        res.status(http_status_codes_1.StatusCodes.OK).json({
-            success: true,
-            message: "Face enrollment presigned URL generated successfully",
-            data: {
-                uploadUrl: presignedData.uploadUrl,
-                key: presignedData.key,
-                url: presignedData.url,
-                expiresIn: 3600, // 1 hour
-                fileType: "face-enrollment",
-                quota: {
-                    used: existingFaceUploads,
-                    max: MAX_FACE_PHOTOS,
-                    remaining: MAX_FACE_PHOTOS - existingFaceUploads,
-                },
-            },
-        });
-    }
-    catch (error) {
-        console.error("Get face enrollment S3 presigned URL error:", error);
-        next(error);
-    }
-};
-exports.getFaceEnrollmentS3PresignedUrl = getFaceEnrollmentS3PresignedUrl;
-// Submit face enrollment from S3 presigned URL
-const submitFaceEnrollmentFromS3 = async (req, res, next) => {
-    try {
-        const { eventId } = req.params;
-        const { s3Key, fileName, fileSize, mimeType } = req.body;
-        const userId = req.user?.id;
-        if (!userId) {
-            throw new badRequest_1.default("User authentication required");
-        }
-        if (!s3Key || !fileName || !mimeType) {
-            throw new badRequest_1.default("S3 key, file name, and MIME type are required");
-        }
-        // Check if event exists and is active
-        const event = await event_1.default.findByPk(eventId);
-        if (!event) {
-            throw new notFound_1.default("Event not found");
-        }
-        if (!event.isActive) {
-            throw new badRequest_1.default("Event is not active");
-        }
-        // Check user's current face enrollment count
-        const existingFaceUploads = await eventMedia_1.default.count({
-            where: {
-                eventId,
-                uploadedBy: userId,
-                isFaceEnrollment: true,
-            },
-        });
-        const MAX_FACE_PHOTOS = 5;
-        if (existingFaceUploads >= MAX_FACE_PHOTOS) {
-            throw new badRequest_1.default(`Maximum face enrollment photos reached (${MAX_FACE_PHOTOS}). Please delete existing face photos before uploading new ones.`);
-        }
-        // Construct the S3 URL from the key
-        const s3Url = `https://${process.env.AWS_S3_BUCKET_NAME}.s3.${process.env.AWS_S3_REGION}.amazonaws.com/${s3Key}`;
-        console.log("Face enrollment S3 URL:", s3Url);
-        console.log("File details:", { fileName, fileSize, mimeType, s3Key });
-        // Create media record for face enrollment (marked with isFaceEnrollment: true)
-        const mediaRecord = await eventMedia_1.default.create({
-            eventId,
-            uploadedBy: userId,
-            mediaType: eventMedia_1.MediaType.IMAGE,
-            mediaUrl: s3Url,
-            fileName: fileName,
-            fileSize: fileSize || 0,
-            mimeType: mimeType,
-            s3Key: s3Key,
-            isFaceEnrollment: true, // Mark as face enrollment to exclude from regular media
-        });
-        // Validate image URL accessibility first
-        console.log("Validating image URL accessibility...");
-        console.log("S3 URL to validate:", s3Url);
-        // Test URL accessibility with axios directly
-        try {
-            const axios = require('axios');
-            const response = await axios.head(s3Url, { timeout: 10000 });
-            console.log("Direct S3 URL check - Status:", response.status);
-            console.log("Direct S3 URL check - Headers:", response.headers);
-        }
-        catch (directError) {
-            console.error("Direct S3 URL check failed:", directError instanceof Error ? directError.message : String(directError));
-        }
-        const isValidUrl = await googleVisionService_1.default.validateImageUrl(s3Url);
-        console.log("Google Vision URL validation result:", isValidUrl);
-        if (!isValidUrl) {
-            await mediaRecord.destroy();
-            throw new badRequest_1.default(`Image URL is not accessible. S3 URL: ${s3Url}. Please check if the file was uploaded correctly and the S3 bucket allows public read access.`);
-        }
-        // Now perform face enrollment using the S3 URL
-        console.log("Starting face detection with Google Vision API...");
-        const faceDetectionResult = await googleVisionService_1.default.detectFacesFromUrl(s3Url);
-        console.log("Face detection result:", {
-            facesDetected: faceDetectionResult.length,
-            detections: faceDetectionResult.map((f) => ({
-                faceId: f.faceId,
-                confidence: f.confidence,
-                rectangle: f.faceRectangle,
-            })),
-        });
-        if (faceDetectionResult.length === 0) {
-            // No face detected, delete the media record
-            await mediaRecord.destroy();
-            throw new badRequest_1.default("No face detected in the uploaded image. Please ensure the image contains a clear, well-lit face and try again.");
-        }
-        // Use the first detected face
-        const detectedFace = faceDetectionResult[0];
-        // Check if user already has a face profile for this event
-        const existingProfile = await userFaceProfile_1.default.findOne({
-            where: {
-                eventId,
-                userId,
-            },
-        });
-        if (existingProfile) {
-            // Update existing profile
-            await existingProfile.update({
-                enrollmentMediaId: mediaRecord.id, // Reference to the media record
-                faceId: detectedFace.faceId,
-                faceRectangle: detectedFace.faceRectangle,
-                faceAttributes: detectedFace.faceAttributes,
-                enrollmentConfidence: detectedFace.confidence || 0.8,
-                isActive: true,
-            });
-            res.status(http_status_codes_1.StatusCodes.OK).json({
-                success: true,
-                message: "Face profile updated successfully",
-                data: {
-                    profile: existingProfile,
-                    faceDetection: detectedFace,
-                    mediaRecord,
-                    quota: {
-                        used: existingFaceUploads + 1,
-                        max: MAX_FACE_PHOTOS,
-                        remaining: MAX_FACE_PHOTOS - (existingFaceUploads + 1),
-                    },
-                },
-            });
-        }
-        else {
-            // Create new face profile
-            const faceProfile = await userFaceProfile_1.default.create({
-                eventId,
-                userId,
-                persistedFaceId: `face_${userId}_${eventId}_${Date.now()}`, // Generate unique persisted face ID
-                enrollmentMediaId: mediaRecord.id, // Reference to the media record
-                faceId: detectedFace.faceId,
-                faceRectangle: detectedFace.faceRectangle,
-                faceAttributes: detectedFace.faceAttributes,
-                enrollmentConfidence: detectedFace.confidence || 0.8,
-                isActive: true,
-            });
-            res.status(http_status_codes_1.StatusCodes.CREATED).json({
-                success: true,
-                message: "Face enrolled successfully",
-                data: {
-                    profile: faceProfile,
-                    faceDetection: detectedFace,
-                    mediaRecord,
-                    quota: {
-                        used: existingFaceUploads + 1,
-                        max: MAX_FACE_PHOTOS,
-                        remaining: MAX_FACE_PHOTOS - (existingFaceUploads + 1),
-                    },
-                },
-            });
-        }
-    }
-    catch (error) {
-        console.error("Submit face enrollment from S3 error:", error);
-        next(error);
-    }
-};
-exports.submitFaceEnrollmentFromS3 = submitFaceEnrollmentFromS3;
-// Test S3 URL accessibility
-const testS3UrlAccess = async (req, res, next) => {
-    try {
-        const { imageUrl } = req.body;
-        if (!imageUrl) {
-            throw new badRequest_1.default("Image URL is required");
-        }
-        console.log("Testing S3 URL accessibility:", imageUrl);
-        // Test URL accessibility
-        const isValidUrl = await googleVisionService_1.default.validateImageUrl(imageUrl);
-        return res.status(http_status_codes_1.StatusCodes.OK).json({
-            success: true,
-            message: "S3 URL accessibility test completed",
-            url: imageUrl,
-            isAccessible: isValidUrl,
-            troubleshooting: isValidUrl
-                ? {
-                    status: "URL is accessible",
-                    nextStep: "Face detection should work",
-                }
-                : {
-                    status: "URL is not accessible",
-                    possibleCauses: [
-                        "S3 bucket policy doesn't allow public read access",
-                        "File was not uploaded correctly",
-                        "Incorrect URL format",
-                        "S3 bucket region mismatch",
-                    ],
-                    solutions: [
-                        "Check S3 bucket policy for public read access",
-                        "Verify file exists in S3 bucket",
-                        "Ensure URL format: https://bucket.s3.region.amazonaws.com/key",
-                    ],
-                },
-        });
-    }
-    catch (error) {
-        console.error("S3 URL accessibility test error:", error);
-        next(error);
-    }
-};
-exports.testS3UrlAccess = testS3UrlAccess;

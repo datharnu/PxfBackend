@@ -300,10 +300,7 @@ const getEventMedia = async (req, res, next) => {
             whereClause.uploadedBy = uploadedBy;
         }
         const { count, rows: media } = await eventMedia_1.default.findAndCountAll({
-            where: {
-                ...whereClause,
-                isFaceEnrollment: { [sequelize_1.Op.not]: true }, // Exclude face enrollment images
-            },
+            where: whereClause,
             include: [
                 {
                     model: user_1.default,
@@ -351,13 +348,12 @@ const getUserEventUploads = async (req, res, next) => {
         if (!event) {
             throw new notFound_1.default("Event not found");
         }
-        // Get user's uploads (excluding face enrollment)
+        // Get user's uploads
         const userUploads = await eventMedia_1.default.findAll({
             where: {
                 eventId,
                 uploadedBy: userId,
                 isActive: true,
-                isFaceEnrollment: { [sequelize_1.Op.not]: true }, // Exclude face enrollment images
             },
             order: [["createdAt", "DESC"]],
         });
@@ -439,12 +435,11 @@ const getEventUploadStats = async (req, res, next) => {
             distinct: true,
             col: "uploadedBy",
         });
-        // Get participant details with their upload counts (excluding face enrollment)
+        // Get participant details with their upload counts
         const participants = await eventMedia_1.default.findAll({
             where: {
                 eventId,
                 isActive: true,
-                isFaceEnrollment: { [sequelize_1.Op.not]: true }, // Exclude face enrollment images
             },
             attributes: [
                 "uploadedBy",
@@ -479,12 +474,11 @@ const getEventUploadStats = async (req, res, next) => {
             raw: true,
             nest: true,
         });
-        // Get recent uploads (last 10, excluding face enrollment)
+        // Get recent uploads (last 10)
         const recentUploads = await eventMedia_1.default.findAll({
             where: {
                 eventId,
                 isActive: true,
-                isFaceEnrollment: { [sequelize_1.Op.not]: true }, // Exclude face enrollment images
             },
             include: [
                 {
@@ -549,13 +543,9 @@ const getEventParticipantsWithUploads = async (req, res, next) => {
         if (!event) {
             throw new notFound_1.default("Event not found");
         }
-        // Find distinct uploaders for the event with counts (excluding face enrollment)
+        // Find distinct uploaders for the event with counts
         const participants = await eventMedia_1.default.findAll({
-            where: {
-                eventId,
-                isActive: true,
-                isFaceEnrollment: { [sequelize_1.Op.not]: true }, // Exclude face enrollment images
-            },
+            where: { eventId, isActive: true },
             attributes: [
                 "uploadedBy",
                 [
@@ -593,14 +583,13 @@ const getEventParticipantsWithUploads = async (req, res, next) => {
             distinct: true,
             col: "uploadedBy",
         });
-        // For each participant, fetch a few recent uploads (thumbnails, excluding face enrollment)
+        // For each participant, fetch a few recent uploads (thumbnails)
         const participantIds = participants.map((p) => p.uploadedBy);
         const recentUploads = await eventMedia_1.default.findAll({
             where: {
                 eventId,
                 isActive: true,
                 uploadedBy: participantIds.length ? participantIds : undefined,
-                isFaceEnrollment: { [sequelize_1.Op.not]: true }, // Exclude face enrollment images
             },
             include: [
                 {
@@ -675,10 +664,7 @@ const getEventUserUploads = async (req, res, next) => {
             whereClause.mediaType = mediaType;
         }
         const { count, rows } = await eventMedia_1.default.findAndCountAll({
-            where: {
-                ...whereClause,
-                isFaceEnrollment: { [sequelize_1.Op.not]: true }, // Exclude face enrollment images
-            },
+            where: whereClause,
             order: [["createdAt", "DESC"]],
             limit: limitNum,
             offset,
@@ -765,12 +751,9 @@ const getEventMediaBySlug = async (req, res, next) => {
             Object.values(eventMedia_1.MediaType).includes(mediaType)) {
             whereClause.mediaType = mediaType;
         }
-        // Get paginated media with uploader info (excluding face enrollment)
+        // Get paginated media with uploader info
         const { count, rows: media } = await eventMedia_1.default.findAndCountAll({
-            where: {
-                ...whereClause,
-                isFaceEnrollment: { [sequelize_1.Op.not]: true }, // Exclude face enrollment images
-            },
+            where: whereClause,
             include: [
                 {
                     model: user_1.default,
@@ -791,12 +774,11 @@ const getEventMediaBySlug = async (req, res, next) => {
             distinct: true,
             col: "uploadedBy",
         });
-        // Get media type breakdown (excluding face enrollment)
+        // Get media type breakdown
         const mediaTypeBreakdown = await eventMedia_1.default.findAll({
             where: {
                 eventId: event.id,
                 isActive: true,
-                isFaceEnrollment: { [sequelize_1.Op.not]: true }, // Exclude face enrollment images
             },
             attributes: [
                 "mediaType",
