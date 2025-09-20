@@ -36,7 +36,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getS3PresignedUrl = exports.submitS3Media = exports.uploadMiddleware = exports.retrainFaceIdentification = exports.getEventFaceStats = exports.getEventFaceDetections = exports.getMediaWithUserFaces = exports.getEventMediaBySlug = exports.deleteUserMedia = exports.getEventUserUploads = exports.getEventParticipantsWithUploads = exports.getEventUploadStats = exports.getUserEventUploads = exports.getEventMedia = exports.getCloudinarySignature = exports.submitCloudinaryMedia = void 0;
+exports.getS3PresignedUrl = exports.getEventFlyerS3PresignedUrl = exports.submitS3Media = exports.uploadMiddleware = exports.retrainFaceIdentification = exports.getEventFaceStats = exports.getEventFaceDetections = exports.getMediaWithUserFaces = exports.getEventMediaBySlug = exports.deleteUserMedia = exports.getEventUserUploads = exports.getEventParticipantsWithUploads = exports.getEventUploadStats = exports.getUserEventUploads = exports.getEventMedia = exports.getCloudinarySignature = exports.submitCloudinaryMedia = void 0;
 const http_status_codes_1 = require("http-status-codes");
 const sequelize_1 = require("sequelize");
 const cloudinary_1 = require("cloudinary");
@@ -49,6 +49,40 @@ const unauthorized_1 = __importDefault(require("../errors/unauthorized"));
 const fileUpload_1 = __importStar(require("../utils/fileUpload"));
 const faceProcessingService_1 = __importDefault(require("../utils/faceProcessingService"));
 const s3Service_1 = __importDefault(require("../utils/s3Service"));
+// Helper function to get upload limits based on user role and event settings
+const getUploadLimits = (event, userId) => {
+    const isCreator = event.createdBy === userId;
+    // Guest limits (existing logic)
+    const guestLimit = event.photoCapLimit === "CUSTOM"
+        ? event.customPhotoCapLimit || 25
+        : parseInt(event.photoCapLimit);
+    // Creator limits based on guest count
+    let creatorLimit = 20; // Default for small events
+    switch (event.guestLimit) {
+        case "10":
+            creatorLimit = 20; // 10 guests -> creator can upload 20
+            break;
+        case "100":
+            creatorLimit = 30; // 100 guests -> creator can upload 30
+            break;
+        case "250":
+        case "500":
+            creatorLimit = 50; // 250-500 guests -> creator can upload 50
+            break;
+        case "800":
+        case "1000":
+        case "CUSTOM":
+            creatorLimit = 80; // 800+ guests -> creator can upload 80
+            break;
+        default:
+            creatorLimit = 20;
+    }
+    return {
+        isCreator,
+        maxUploads: isCreator ? creatorLimit : guestLimit,
+        userType: isCreator ? "creator" : "guest",
+    };
+};
 cloudinary_1.v2.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
     api_key: process.env.CLOUDINARY_API_KEY,
@@ -84,13 +118,13 @@ const submitCloudinaryMedia = async (req, res, next) => {
                 isFaceEnrollment: { [sequelize_1.Op.not]: true }, // Exclude face enrollment images
             },
         });
-        const photoCapLimit = parseInt(event.photoCapLimit);
+        const { maxUploads, isCreator, userType } = getUploadLimits(event, userId);
         // Check limits
-        if (userUploads >= photoCapLimit) {
-            throw new badRequest_1.default(`You have reached your upload limit of ${photoCapLimit} files for this event`);
+        if (userUploads >= maxUploads) {
+            throw new badRequest_1.default(`You have reached your upload limit of ${maxUploads} files for ${userType}s in this event`);
         }
-        if (userUploads + mediaUrls.length > photoCapLimit) {
-            throw new badRequest_1.default(`Submitting ${mediaUrls.length} files would exceed your limit of ${photoCapLimit}. You have ${photoCapLimit - userUploads} uploads remaining.`);
+        if (userUploads + mediaUrls.length > maxUploads) {
+            throw new badRequest_1.default(`Submitting ${mediaUrls.length} files would exceed your limit of ${maxUploads} for ${userType}s. You have ${maxUploads - userUploads} uploads remaining.`);
         }
         // Validate Cloudinary URLs belong to your cloud (security check)
         const validCloudinaryDomain = `https://res.cloudinary.com/${process.env.CLOUDINARY_CLOUD_NAME}/`;
@@ -145,8 +179,10 @@ const submitCloudinaryMedia = async (req, res, next) => {
             uploadedMedia: mediaRecords,
             uploadStats: {
                 totalUploads: updatedUserUploads,
-                remainingUploads: photoCapLimit - updatedUserUploads,
-                photoCapLimit,
+                remainingUploads: maxUploads - updatedUserUploads,
+                maxUploads,
+                userType,
+                isCreator,
             },
             faceProcessing: {
                 imagesProcessed: imageMediaIds.length,
@@ -185,9 +221,9 @@ const getCloudinarySignature = async (req, res, next) => {
                 isFaceEnrollment: { [sequelize_1.Op.not]: true }, // Exclude face enrollment images
             },
         });
-        const photoCapLimit = parseInt(event.photoCapLimit);
-        if (userUploads >= photoCapLimit) {
-            throw new badRequest_1.default(`You have reached your upload limit of ${photoCapLimit} files for this event`);
+        const { maxUploads, isCreator, userType } = getUploadLimits(event, userId);
+        if (userUploads >= maxUploads) {
+            throw new badRequest_1.default(`You have reached your upload limit of ${maxUploads} files for ${userType}s in this event`);
         }
         // Generate timestamp for signature
         const timestamp = Math.round(new Date().getTime() / 1000);
@@ -211,7 +247,13 @@ const getCloudinarySignature = async (req, res, next) => {
             cloudName: process.env.CLOUDINARY_CLOUD_NAME,
             apiKey: process.env.CLOUDINARY_API_KEY,
             folder: `events/${eventId}`,
-            remainingUploads: photoCapLimit - userUploads,
+            uploadStats: {
+                currentUploads: userUploads,
+                maxUploads,
+                remainingUploads: maxUploads - userUploads,
+                userType,
+                isCreator,
+            },
         });
     }
     catch (error) {
@@ -978,15 +1020,13 @@ const submitS3Media = async (req, res, next) => {
         // Allow any authenticated user to upload to events
         // Event creators and users accessing via slug/QR code can both upload
         // No additional access restrictions needed since user is already authenticated
-        // Check photo upload limits
+        // Check photo upload limits based on user role
         const currentUploads = await eventMedia_1.default.count({
             where: { eventId, uploadedBy: userId },
         });
-        const maxUploads = event.photoCapLimit === "CUSTOM"
-            ? event.customPhotoCapLimit || 25
-            : parseInt(event.photoCapLimit);
+        const { maxUploads, isCreator, userType } = getUploadLimits(event, userId);
         if (currentUploads + mediaUrls.length > maxUploads) {
-            throw new badRequest_1.default(`Upload limit exceeded. Maximum ${maxUploads} photos allowed per event.`);
+            throw new badRequest_1.default(`Upload limit exceeded. Maximum ${maxUploads} photos allowed for ${userType}s in this event.`);
         }
         const uploadedMedia = [];
         for (const mediaData of mediaUrls) {
@@ -1033,6 +1073,8 @@ const submitS3Media = async (req, res, next) => {
                     totalUploads: currentUploads + uploadedMedia.length,
                     maxUploads,
                     remainingUploads: maxUploads - (currentUploads + uploadedMedia.length),
+                    userType,
+                    isCreator,
                 },
             },
         });
@@ -1043,6 +1085,47 @@ const submitS3Media = async (req, res, next) => {
     }
 };
 exports.submitS3Media = submitS3Media;
+// Generate S3 presigned URL for event flyer upload
+const getEventFlyerS3PresignedUrl = async (req, res, next) => {
+    try {
+        const { fileName, mimeType, eventId } = req.body;
+        const userId = req.user?.id;
+        if (!userId) {
+            throw new badRequest_1.default("User authentication required");
+        }
+        if (!fileName || !mimeType) {
+            throw new badRequest_1.default("File name and MIME type are required");
+        }
+        // Validate file type for event flyers (images only)
+        if (!mimeType.startsWith("image/")) {
+            throw new badRequest_1.default("Event flyer must be an image file");
+        }
+        // Generate unique key for the event flyer
+        const timestamp = Date.now();
+        const randomId = Math.random().toString(36).substring(2, 15);
+        const extension = fileName.split(".").pop()?.toLowerCase() || "jpg";
+        // Create a unique key for event flyers
+        const key = `event-flyers/${userId}/${timestamp}-${randomId}.${extension}`;
+        // Generate presigned URL
+        const presignedData = await s3Service_1.default.getPresignedUploadUrl(key, mimeType);
+        res.status(http_status_codes_1.StatusCodes.OK).json({
+            success: true,
+            message: "Event flyer presigned URL generated successfully",
+            data: {
+                uploadUrl: presignedData.uploadUrl,
+                key: presignedData.key,
+                url: presignedData.url,
+                expiresIn: 3600, // 1 hour
+                fileType: "event-flyer",
+            },
+        });
+    }
+    catch (error) {
+        console.error("Get event flyer S3 presigned URL error:", error);
+        next(error);
+    }
+};
+exports.getEventFlyerS3PresignedUrl = getEventFlyerS3PresignedUrl;
 // Generate S3 presigned URL for direct upload from frontend
 const getS3PresignedUrl = async (req, res, next) => {
     try {
@@ -1060,15 +1143,13 @@ const getS3PresignedUrl = async (req, res, next) => {
         if (!event) {
             throw new notFound_1.default("Event not found");
         }
-        // Check upload limits
+        // Check upload limits based on user role
         const currentUploads = await eventMedia_1.default.count({
             where: { eventId, uploadedBy: userId },
         });
-        const maxUploads = event.photoCapLimit === "CUSTOM"
-            ? event.customPhotoCapLimit || 25
-            : parseInt(event.photoCapLimit);
+        const { maxUploads, isCreator, userType } = getUploadLimits(event, userId);
         if (currentUploads >= maxUploads) {
-            throw new badRequest_1.default(`Upload limit reached. Maximum ${maxUploads} photos allowed per event.`);
+            throw new badRequest_1.default(`Upload limit reached. Maximum ${maxUploads} photos allowed for ${userType}s in this event.`);
         }
         // Generate unique key for the file
         const key = s3Service_1.default.generateKey(eventId, userId, fileName, (0, fileUpload_1.getMediaTypeFromMimeType)(mimeType));
@@ -1086,6 +1167,8 @@ const getS3PresignedUrl = async (req, res, next) => {
                     currentUploads,
                     maxUploads,
                     remainingUploads: maxUploads - currentUploads,
+                    userType,
+                    isCreator,
                 },
             },
         });

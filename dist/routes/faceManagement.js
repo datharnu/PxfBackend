@@ -13,6 +13,9 @@ const upload = (0, multer_1.default)({
     storage,
     limits: {
         fileSize: 100 * 1024 * 1024, // 100MB limit for images
+        fieldSize: 100 * 1024 * 1024, // 100MB limit for field values
+        files: 1, // Only allow 1 file at a time for face enrollment
+        parts: 1000, // Increase parts limit for large files
     },
     fileFilter: (req, file, cb) => {
         const allowedTypes = ["image/jpeg", "image/jpg", "image/png"];

@@ -55,6 +55,15 @@ router.post("/event/:eventId/submit-media", [
         .withMessage("Cloudinary public ID required"),
 ], customValidations_1.validate, media_1.submitCloudinaryMedia);
 // ===== NEW S3-BASED UPLOAD ROUTES =====
+// Get S3 presigned URL for event flyer upload
+router.post("/event-flyer/s3-presigned-url", [
+    (0, express_validator_1.body)("fileName").notEmpty().withMessage("File name is required"),
+    (0, express_validator_1.body)("mimeType").notEmpty().withMessage("MIME type is required"),
+    (0, express_validator_1.body)("eventId")
+        .optional()
+        .isUUID()
+        .withMessage("Event ID must be a valid UUID"),
+], customValidations_1.validate, media_1.getEventFlyerS3PresignedUrl);
 // Get S3 presigned URL for direct upload (RECOMMENDED METHOD)
 router.post("/event/:eventId/s3-presigned-url", [
     (0, express_validator_1.param)("eventId").isUUID().withMessage("Event ID must be a valid UUID"),

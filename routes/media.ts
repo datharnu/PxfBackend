@@ -16,6 +16,7 @@ import {
   getCloudinarySignature,
   submitS3Media,
   getS3PresignedUrl,
+  getEventFlyerS3PresignedUrl,
   getMediaWithUserFaces,
   getEventFaceDetections,
   getEventFaceStats,
@@ -90,6 +91,21 @@ router.post(
 );
 
 // ===== NEW S3-BASED UPLOAD ROUTES =====
+
+// Get S3 presigned URL for event flyer upload
+router.post(
+  "/event-flyer/s3-presigned-url",
+  [
+    body("fileName").notEmpty().withMessage("File name is required"),
+    body("mimeType").notEmpty().withMessage("MIME type is required"),
+    body("eventId")
+      .optional()
+      .isUUID()
+      .withMessage("Event ID must be a valid UUID"),
+  ],
+  validate,
+  getEventFlyerS3PresignedUrl
+);
 
 // Get S3 presigned URL for direct upload (RECOMMENDED METHOD)
 router.post(
