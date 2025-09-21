@@ -143,6 +143,12 @@ class S3Service {
         const extension = originalName.split(".").pop()?.toLowerCase() || "jpg";
         return `events/${eventId}/${type}s/${userId}/${timestamp}-${randomId}.${extension}`;
     }
+    /**
+     * Get public URL for an S3 object
+     */
+    static getPublicUrl(key) {
+        return `https://${BUCKET_NAME}.s3.${process.env.AWS_REGION || "us-east-1"}.amazonaws.com/${key}`;
+    }
 }
 exports.S3Service = S3Service;
 exports.default = S3Service;

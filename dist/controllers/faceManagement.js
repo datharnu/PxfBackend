@@ -47,6 +47,7 @@ const badRequest_1 = __importDefault(require("../errors/badRequest"));
 const notFound_1 = __importDefault(require("../errors/notFound"));
 const unauthorized_1 = __importDefault(require("../errors/unauthorized"));
 const googleVisionService_1 = __importDefault(require("../utils/googleVisionService"));
+const s3Service_1 = __importDefault(require("../utils/s3Service"));
 // Test Google Vision API connection
 const testGoogleVisionAPI = async (req, res, next) => {
     try {
@@ -160,31 +161,16 @@ const enrollUserFace = async (req, res, next) => {
         let imageUrl;
         let mediaRecord = null;
         if (faceImage) {
-            // Handle file upload - upload to Cloudinary first
-            const { v2: cloudinary } = require("cloudinary");
-            // Configure Cloudinary (if not already configured)
-            if (!cloudinary.config().cloud_name) {
-                cloudinary.config({
-                    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-                    api_key: process.env.CLOUDINARY_API_KEY,
-                    api_secret: process.env.CLOUDINARY_API_SECRET,
-                });
-            }
-            // Upload to Cloudinary
-            const uploadResult = await new Promise((resolve, reject) => {
-                cloudinary.uploader
-                    .upload_stream({
-                    folder: "face-enrollment",
-                    resource_type: "image",
-                }, (error, result) => {
-                    if (error)
-                        reject(error);
-                    else
-                        resolve(result);
-                })
-                    .end(faceImage.buffer);
-            });
-            imageUrl = uploadResult.secure_url;
+            // Handle file upload - upload to S3 first
+            const timestamp = Date.now();
+            const randomId = Math.random().toString(36).substring(2, 15);
+            const extension = faceImage.originalname?.split(".").pop()?.toLowerCase() || "jpg";
+            // Create unique S3 key for face enrollment
+            const s3Key = `face-enrollment/${userId}/${timestamp}-${randomId}.${extension}`;
+            // Upload to S3
+            await s3Service_1.default.uploadFile(faceImage.buffer, s3Key, faceImage.mimetype || "image/jpeg");
+            // Get the public URL
+            imageUrl = s3Service_1.default.getPublicUrl(s3Key);
             // Create a media record for the uploaded face image
             mediaRecord = await eventMedia_1.default.create({
                 eventId,
@@ -194,7 +180,7 @@ const enrollUserFace = async (req, res, next) => {
                 fileName: faceImage.originalname || "face-enrollment.jpg",
                 fileSize: faceImage.size || 0,
                 mimeType: faceImage.mimetype || "image/jpeg",
-                cloudinaryPublicId: uploadResult.public_id,
+                s3Key: s3Key, // Store S3 key instead of Cloudinary public ID
                 isFaceEnrollment: true, // Mark as face enrollment to exclude from upload limits
             });
         }

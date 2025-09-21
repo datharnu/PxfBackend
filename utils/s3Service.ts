@@ -198,6 +198,15 @@ export class S3Service {
 
     return `events/${eventId}/${type}s/${userId}/${timestamp}-${randomId}.${extension}`;
   }
+
+  /**
+   * Get public URL for an S3 object
+   */
+  static getPublicUrl(key: string): string {
+    return `https://${BUCKET_NAME}.s3.${
+      process.env.AWS_REGION || "us-east-1"
+    }.amazonaws.com/${key}`;
+  }
 }
 
 export default S3Service;
