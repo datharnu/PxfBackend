@@ -1253,9 +1253,13 @@ export const submitS3Media = async (
     // Event creators and users accessing via slug/QR code can both upload
     // No additional access restrictions needed since user is already authenticated
 
-    // Check photo upload limits based on user role
+    // Check photo upload limits based on user role (excluding face enrollment uploads)
     const currentUploads = await EventMedia.count({
-      where: { eventId, uploadedBy: userId },
+      where: {
+        eventId,
+        uploadedBy: userId,
+        isFaceEnrollment: { [Op.not]: true }, // Exclude face enrollment images
+      },
     });
 
     const { maxUploads, isCreator, userType } = getUploadLimits(event, userId);
@@ -1407,9 +1411,13 @@ export const getS3PresignedUrl = async (
       throw new NotFoundError("Event not found");
     }
 
-    // Check upload limits based on user role
+    // Check upload limits based on user role (excluding face enrollment uploads)
     const currentUploads = await EventMedia.count({
-      where: { eventId, uploadedBy: userId },
+      where: {
+        eventId,
+        uploadedBy: userId,
+        isFaceEnrollment: { [Op.not]: true }, // Exclude face enrollment images
+      },
     });
 
     const { maxUploads, isCreator, userType } = getUploadLimits(event, userId);

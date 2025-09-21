@@ -1034,9 +1034,13 @@ const submitS3Media = async (req, res, next) => {
         // Allow any authenticated user to upload to events
         // Event creators and users accessing via slug/QR code can both upload
         // No additional access restrictions needed since user is already authenticated
-        // Check photo upload limits based on user role
+        // Check photo upload limits based on user role (excluding face enrollment uploads)
         const currentUploads = await eventMedia_1.default.count({
-            where: { eventId, uploadedBy: userId },
+            where: {
+                eventId,
+                uploadedBy: userId,
+                isFaceEnrollment: { [sequelize_1.Op.not]: true }, // Exclude face enrollment images
+            },
         });
         const { maxUploads, isCreator, userType } = getUploadLimits(event, userId);
         if (currentUploads + mediaUrls.length > maxUploads) {
@@ -1156,9 +1160,13 @@ const getS3PresignedUrl = async (req, res, next) => {
         if (!event) {
             throw new notFound_1.default("Event not found");
         }
-        // Check upload limits based on user role
+        // Check upload limits based on user role (excluding face enrollment uploads)
         const currentUploads = await eventMedia_1.default.count({
-            where: { eventId, uploadedBy: userId },
+            where: {
+                eventId,
+                uploadedBy: userId,
+                isFaceEnrollment: { [sequelize_1.Op.not]: true }, // Exclude face enrollment images
+            },
         });
         const { maxUploads, isCreator, userType } = getUploadLimits(event, userId);
         if (currentUploads >= maxUploads) {
