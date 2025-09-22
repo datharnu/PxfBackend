@@ -208,7 +208,7 @@ const enrollUserFace = async (req, res, next) => {
             },
         });
         if (existingProfile) {
-            throw new badRequest_1.default("You already have a face profile for this event");
+            throw new badRequest_1.default("You already have a face profile for this event. Face enrollment is limited to once per event to manage API costs.");
         }
         // Validate image URL
         const isValidUrl = await googleVisionService_1.default.validateImageUrl(imageUrl);
@@ -237,7 +237,7 @@ const enrollUserFace = async (req, res, next) => {
         });
         return res.status(http_status_codes_1.StatusCodes.CREATED).json({
             success: true,
-            message: "Face enrolled successfully using Google Vision API",
+            message: "Face enrolled successfully using Google Vision API. Face enrollment is limited to once per event.",
             faceProfile: {
                 id: faceProfile.id,
                 userId: faceProfile.userId,
@@ -254,6 +254,12 @@ const enrollUserFace = async (req, res, next) => {
                 mediaType: mediaRecord.mediaType,
             },
             trainingStatus: "Face detection enabled using Google Vision API. Face matching uses custom algorithm.",
+            enrollmentInfo: {
+                canReEnroll: false,
+                maxFileSize: "200MB",
+                note: "Face enrollment doesn't count against your photo upload limit!",
+                costNote: "Face enrollment is limited to once per event to manage Google Vision API costs.",
+            },
         });
     }
     catch (error) {

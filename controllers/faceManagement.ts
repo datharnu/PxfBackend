@@ -210,7 +210,7 @@ export const enrollUserFace = async (
 
     if (existingProfile) {
       throw new BadRequestError(
-        "You already have a face profile for this event"
+        "You already have a face profile for this event. Face enrollment is limited to once per event to manage API costs."
       );
     }
 
@@ -251,7 +251,8 @@ export const enrollUserFace = async (
 
     return res.status(StatusCodes.CREATED).json({
       success: true,
-      message: "Face enrolled successfully using Google Vision API",
+      message:
+        "Face enrolled successfully using Google Vision API. Face enrollment is limited to once per event.",
       faceProfile: {
         id: faceProfile.id,
         userId: faceProfile.userId,
@@ -269,6 +270,13 @@ export const enrollUserFace = async (
       },
       trainingStatus:
         "Face detection enabled using Google Vision API. Face matching uses custom algorithm.",
+      enrollmentInfo: {
+        canReEnroll: false,
+        maxFileSize: "200MB",
+        note: "Face enrollment doesn't count against your photo upload limit!",
+        costNote:
+          "Face enrollment is limited to once per event to manage Google Vision API costs.",
+      },
     });
   } catch (error) {
     console.error("Face enrollment error:", error);

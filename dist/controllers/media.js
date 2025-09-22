@@ -322,12 +322,13 @@ const getUserEventUploads = async (req, res, next) => {
         if (!event) {
             throw new notFound_1.default("Event not found");
         }
-        // Get user's uploads
+        // Get user's uploads (excluding face enrollment images)
         const userUploads = await eventMedia_1.default.findAll({
             where: {
                 eventId,
                 uploadedBy: userId,
                 isActive: true,
+                isFaceEnrollment: { [sequelize_1.Op.not]: true }, // Exclude face enrollment images
             },
             order: [["createdAt", "DESC"]],
         });

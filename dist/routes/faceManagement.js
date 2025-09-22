@@ -12,12 +12,12 @@ const storage = multer_1.default.memoryStorage();
 const upload = (0, multer_1.default)({
     storage,
     limits: {
-        fileSize: 104857600, // 100MB = 100 * 1024 * 1024 bytes (explicitly set)
-        fieldSize: 104857600, // 100MB limit for field values
+        fileSize: 209715200, // 200MB = 200 * 1024 * 1024 bytes (increased for high-res face images)
+        fieldSize: 209715200, // 200MB limit for field values
         files: 1, // Only allow 1 file at a time for face enrollment
-        parts: 1000, // Increase parts limit for large files
+        parts: 2000, // Increase parts limit for large files
         fieldNameSize: 100, // Max field name size
-        headerPairs: 2000, // Max header pairs
+        headerPairs: 4000, // Max header pairs
     },
     fileFilter: (req, file, cb) => {
         const allowedTypes = ["image/jpeg", "image/jpg", "image/png"];

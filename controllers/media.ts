@@ -372,12 +372,13 @@ export const getUserEventUploads = async (
       throw new NotFoundError("Event not found");
     }
 
-    // Get user's uploads
+    // Get user's uploads (excluding face enrollment images)
     const userUploads = await EventMedia.findAll({
       where: {
         eventId,
         uploadedBy: userId,
         isActive: true,
+        isFaceEnrollment: { [Op.not]: true }, // Exclude face enrollment images
       },
       order: [["createdAt", "DESC"]],
     });
