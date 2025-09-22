@@ -303,6 +303,7 @@ export const getEventMedia = async (
     const whereClause: any = {
       eventId: event.id,
       isActive: true,
+      isFaceEnrollment: { [Op.not]: true }, // Exclude face enrollment images
     };
 
     if (
@@ -461,21 +462,23 @@ export const getEventUploadStats = async (
       raw: true,
     });
 
-    // Get unique participants (uploaders) count
+    // Get unique participants (uploaders) count (excluding face enrollment uploads)
     const uniqueParticipants = await EventMedia.count({
       where: {
         eventId,
         isActive: true,
+        isFaceEnrollment: { [Op.not]: true }, // Exclude face enrollment images
       },
       distinct: true,
       col: "uploadedBy",
     });
 
-    // Get participant details with their upload counts
+    // Get participant details with their upload counts (excluding face enrollment uploads)
     const participants = await EventMedia.findAll({
       where: {
         eventId,
         isActive: true,
+        isFaceEnrollment: { [Op.not]: true }, // Exclude face enrollment images
       },
       attributes: [
         "uploadedBy",
@@ -520,11 +523,12 @@ export const getEventUploadStats = async (
       nest: true,
     });
 
-    // Get recent uploads (last 10)
+    // Get recent uploads (last 10) (excluding face enrollment uploads)
     const recentUploads = await EventMedia.findAll({
       where: {
         eventId,
         isActive: true,
+        isFaceEnrollment: { [Op.not]: true }, // Exclude face enrollment images
       },
       include: [
         {
@@ -537,11 +541,12 @@ export const getEventUploadStats = async (
       limit: 10,
     });
 
-    // Calculate total file size
+    // Calculate total file size (excluding face enrollment uploads)
     const totalFileSize = await EventMedia.sum("fileSize", {
       where: {
         eventId,
         isActive: true,
+        isFaceEnrollment: { [Op.not]: true }, // Exclude face enrollment images
       },
     });
 
@@ -604,9 +609,13 @@ export const getEventParticipantsWithUploads = async (
       throw new NotFoundError("Event not found");
     }
 
-    // Find distinct uploaders for the event with counts
+    // Find distinct uploaders for the event with counts (excluding face enrollment uploads)
     const participants = await EventMedia.findAll({
-      where: { eventId, isActive: true },
+      where: {
+        eventId,
+        isActive: true,
+        isFaceEnrollment: { [Op.not]: true }, // Exclude face enrollment images
+      },
       attributes: [
         "uploadedBy",
         [
@@ -645,20 +654,25 @@ export const getEventParticipantsWithUploads = async (
       nest: true,
     });
 
-    // Total unique participants for pagination
+    // Total unique participants for pagination (excluding face enrollment uploads)
     const totalParticipants = await EventMedia.count({
-      where: { eventId, isActive: true },
+      where: {
+        eventId,
+        isActive: true,
+        isFaceEnrollment: { [Op.not]: true }, // Exclude face enrollment images
+      },
       distinct: true,
       col: "uploadedBy",
     });
 
-    // For each participant, fetch a few recent uploads (thumbnails)
+    // For each participant, fetch a few recent uploads (thumbnails) (excluding face enrollment uploads)
     const participantIds = participants.map((p: any) => p.uploadedBy);
     const recentUploads = await EventMedia.findAll({
       where: {
         eventId,
         isActive: true,
         uploadedBy: participantIds.length ? participantIds : undefined,
+        isFaceEnrollment: { [Op.not]: true }, // Exclude face enrollment images
       },
       include: [
         {
@@ -736,7 +750,12 @@ export const getEventUserUploads = async (
       throw new NotFoundError("User not found");
     }
 
-    const whereClause: any = { eventId, uploadedBy: userId, isActive: true };
+    const whereClause: any = {
+      eventId,
+      uploadedBy: userId,
+      isActive: true,
+      isFaceEnrollment: { [Op.not]: true }, // Exclude face enrollment images
+    };
     if (
       mediaType &&
       Object.values(MediaType).includes(mediaType as MediaType)
@@ -868,21 +887,23 @@ export const getEventMediaBySlug = async (
       offset: offset,
     });
 
-    // Get total unique participants count
+    // Get total unique participants count (excluding face enrollment uploads)
     const uniqueParticipants = await EventMedia.count({
       where: {
         eventId: event.id,
         isActive: true,
+        isFaceEnrollment: { [Op.not]: true }, // Exclude face enrollment images
       },
       distinct: true,
       col: "uploadedBy",
     });
 
-    // Get media type breakdown
+    // Get media type breakdown (excluding face enrollment uploads)
     const mediaTypeBreakdown = await EventMedia.findAll({
       where: {
         eventId: event.id,
         isActive: true,
+        isFaceEnrollment: { [Op.not]: true }, // Exclude face enrollment images
       },
       attributes: [
         "mediaType",
