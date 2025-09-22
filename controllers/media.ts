@@ -19,44 +19,18 @@ import S3Service from "../utils/s3Service";
 const getUploadLimits = (event: any, userId: string) => {
   const isCreator = event.createdBy === userId;
 
-  // Define upload limits based on guest count
-  let creatorLimit = 20;
-  let guestLimit = 5;
+  // Use the event's photoCapLimit for guests, with higher limits for creators
+  let guestLimit: number;
 
-  switch (event.guestLimit) {
-    case "10":
-      creatorLimit = 20;
-      guestLimit = 5;
-      break;
-    case "100":
-      creatorLimit = 30;
-      guestLimit = 10;
-      break;
-    case "250":
-      creatorLimit = 50;
-      guestLimit = 15;
-      break;
-    case "500":
-      creatorLimit = 50;
-      guestLimit = 20;
-      break;
-    case "800":
-      creatorLimit = 80;
-      guestLimit = 25;
-      break;
-    case "1000":
-      creatorLimit = 80;
-      guestLimit = 25;
-      break;
-    case "CUSTOM":
-      creatorLimit = 80;
-      // For custom plans, use the event's custom photo cap limit for guests
-      guestLimit = event.customPhotoCapLimit || 25;
-      break;
-    default:
-      creatorLimit = 20;
-      guestLimit = 5;
+  // Parse the photoCapLimit from the event model
+  if (event.photoCapLimit === "CUSTOM") {
+    guestLimit = event.customPhotoCapLimit || 25;
+  } else {
+    guestLimit = parseInt(event.photoCapLimit) || 5;
   }
+
+  // Creators get higher limits (typically 2-3x the guest limit)
+  const creatorLimit = Math.max(guestLimit * 2, 20);
 
   return {
     isCreator,
