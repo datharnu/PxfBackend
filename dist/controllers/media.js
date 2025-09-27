@@ -52,7 +52,7 @@ const s3Service_1 = __importDefault(require("../utils/s3Service"));
 // Helper function to get upload limits based on user role and event settings
 const getUploadLimits = (event, userId) => {
     const isCreator = event.createdBy === userId;
-    // Use the event's photoCapLimit for guests, with higher limits for creators
+    // Use the event's photoCapLimit for guests
     let guestLimit;
     // Parse the photoCapLimit from the event model
     if (event.photoCapLimit === "CUSTOM") {
@@ -61,8 +61,37 @@ const getUploadLimits = (event, userId) => {
     else {
         guestLimit = parseInt(event.photoCapLimit) || 5;
     }
-    // Creators get higher limits (typically 2-3x the guest limit)
-    const creatorLimit = Math.max(guestLimit * 2, 20);
+    // Hosts (creators) get plan-based upload limits based on guest capacity
+    let creatorLimit;
+    if (isCreator) {
+        // Get the actual guest limit number for the plan
+        let planGuestLimit;
+        if (event.guestLimit === "CUSTOM") {
+            planGuestLimit = event.customGuestLimit || 1000;
+        }
+        else {
+            planGuestLimit = parseInt(event.guestLimit) || 100;
+        }
+        // Define host upload limits based on plan guest capacity
+        if (planGuestLimit <= 100) {
+            creatorLimit = 100; // 100 guests → 100 uploads
+        }
+        else if (planGuestLimit <= 200) {
+            creatorLimit = 200; // 200 guests → 200 uploads
+        }
+        else if (planGuestLimit <= 500) {
+            creatorLimit = 250; // 500 guests → 250 uploads
+        }
+        else if (planGuestLimit <= 800) {
+            creatorLimit = 300; // 800 guests → 300 uploads
+        }
+        else {
+            creatorLimit = 300; // 1000+ guests and custom → 300 uploads
+        }
+    }
+    else {
+        creatorLimit = guestLimit; // This won't be used for guests
+    }
     return {
         isCreator,
         maxUploads: isCreator ? creatorLimit : guestLimit,
